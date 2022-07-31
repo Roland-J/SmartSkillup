@@ -697,8 +697,8 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 		
     -- Mouse left release
     elseif type == 2 then
-		if click and meta[click.t] then -- ensure click.t has not been destroyed
-			if meta[click.t].settings.flags.clickable and click.t:hover(x, y) then
+		if click then
+			if meta[click.t] and meta[click.t].settings.flags.clickable and click.t:hover(x, y) then -- ensure click.t has not been destroyed
 				call_events(click.t, 'left_click', true, drag ~= nil)
 			end
 			if drag and meta[drag.t] and meta[drag.t].root_settings then -- ensure drag.t not destroyed
