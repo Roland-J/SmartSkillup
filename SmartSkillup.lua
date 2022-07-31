@@ -16,7 +16,7 @@ modification, are permitted provided that the following conditions are met:
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL <your name> BE LIABLE FOR ANY
+DISCLAIMED. IN NO EVENT SHALL RolandJ BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -388,10 +388,6 @@ function make_decision(source) --must be global to both A) be called from above 
 		elseif mp_limit and spell.mp_cost > mp_limit then
 			decision.over_mp_limit = true
 			break
-			
-		-- CONTINUE: UNSET BLU SPELL
-		elseif res.skills[spell.skill].en == 'Blue Magic' and not me.blu_spells:find(spell.en) then
-			decision.unset_blu_spell = spell.en
 		
 		-- RETURN: CHEAPEST SPELL TOO EXPENSIVE (NEED TO REST)
 		elseif me.mp < spell.mp_cost + (me.convert_ready and 1 or 0) then -- ensure 1 MP is left if convert is viable
@@ -562,6 +558,11 @@ function process_status_change(newStatusId, oldStatusId)
 		elseif newStatus == 'Idle' then
 			-- DISENGAGEMENT
 			if oldStatus == 'Engaged' then
+				if me.shutdown_awaiting_disengage then
+					windower.send_command:schedule(2, 'input /shutdown')
+					return logger(chat_colors.yellow, '[AUTO-SHUTDOWN] Performing the requested /shutdown.')
+				end
+			
 				local override = not auto_resting and me.mpp < 30
 				if auto_resting or override then
 					decide_to_rest('Player disengaged', true, override)

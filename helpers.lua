@@ -16,7 +16,7 @@ modification, are permitted provided that the following conditions are met:
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL <your name> BE LIABLE FOR ANY
+DISCLAIMED. IN NO EVENT SHALL RolandJ BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -109,8 +109,12 @@ toggle_to_next_skill = function()
 		return coroutine.schedule(function()
 			logger(chat_colors.yellow, '[END OF SESSION] No skills remain in the current session. Ending session...')
 			if auto_shutdown then 
-				windower.send_command('input /shutdown')
-				logger(chat_colors.yellow, '[AUTO-SHUTDOWN] Performing the requested /shutdown.')
+				if me.status == 'Engaged' then
+					me.shutdown_awaiting_disengage = true
+				else
+					windower.send_command('input /shutdown')
+					logger(chat_colors.yellow, '[AUTO-SHUTDOWN] Performing the requested /shutdown.')
+				end
 			else
 				windower.send_command('sms stop')
 			end
@@ -156,6 +160,10 @@ local function is_valid(spell, skill_en, for_module) --half of this function cam
 		return false
 	elseif (not spell.levels[me.main_job_id] or spell.levels[me.main_job_id] > me.main_job_level) --mj can't cast
 	and (not spell.levels[me.sub_job_id] or spell.levels[me.sub_job_id] > me.sub_job_level) then --sj can't cast
+		return false
+	elseif skill_en == 'Blue Magic' and not me.blu_spells:find(spell.en) then
+		spell.reason = 'Unset'
+		if not for_module then ignored_spells[skill_en]:insert(spell) end -- process, but don't insert, while generating modules
 		return false
 	elseif not for_module and (resistable_spells[skill_en] or T{}):contains(spell.en) then --resistable and bad for skillup
 		spell.reason = 'Resistable/unstackable, poor for skillup'
@@ -582,7 +590,9 @@ function determine_modules()
 	local ability_recasts = windower.ffxi.get_ability_recasts()
 	local player = windower.ffxi.get_player()
 	modules = modules_default:copy()
-	if known_spells[931] then
+	
+	-- MOOGLE MODULE
+	if known_spells[modules.moogle.res.id] then
 		modules.moogle.available = true -- res already populated
 	end
 	-- DYNAMIC SPELL MODULES (Refresh/Haste)
@@ -642,8 +652,8 @@ end
 -------------------------------------------------------------------------------------------------------------------
 function evaluate_composure_active()
 	modules.compo.active = (function()
-		if modules.refresh.active and not buffidactive[modules.refresh.res.status]
-		or modules.haste.active and not buffidactive[modules.haste.res.status] then
+		if (modules.refresh.active and not buffidactive[modules.refresh.res.status])
+		or (modules.haste.active and not buffidactive[modules.haste.res.status]) then
 			return true
 		end
 		return false
@@ -663,9 +673,7 @@ function schedule_module_readiness(mod, immediate)
 		mod.ready = true
 	else
 		mod.ready = false
-		coroutine.schedule(function()
-			mod.ready = true;
-		end, recast)
+		schedule_module_readiness:schedule(recast+0.1, true)
 	end
 end
 
