@@ -484,6 +484,7 @@ event_pauses_metatable = setmetatable({}, {
 			else
 				going = true --causes issues when clicking ON to get up and start
 				me.awaiting_event_pause_end = nil -- reset
+				end_timeout_and_decision(reason, chat_colors.purple, '[' .. reason .. '] The last event, "' .. k .. '", ended the timeout and decisions.', true)
 				schedule_decision(1, reason, chat_colors.purple, '[' .. reason .. '] The last event, "' .. k .. '", scheduled a decision in 1 sec...', true)
 			end
 		
@@ -673,7 +674,7 @@ function schedule_module_readiness(mod, immediate)
 		mod.ready = true
 	else
 		mod.ready = false
-		schedule_module_readiness:schedule(recast+0.1, true)
+		schedule_module_readiness:schedule(recast+0.1, mod, true)
 	end
 end
 

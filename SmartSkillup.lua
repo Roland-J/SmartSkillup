@@ -353,7 +353,6 @@ function make_decision(source) --must be global to both A) be called from above 
 		return logger(chat_colors.purple, '[DECISION STOP] Releasing the player\'s avatar...', true)
 	end
 	
-	
 	-- PROCESS MP LIMIT ISSUE
 	local spells_below_limit = mp_limit and valid_spells_sorted[skill_to_skillup]:count(function(s) return s.mp_cost <= mp_limit end)
 	if mp_limit and spells_below_limit == 0 and v then
@@ -382,11 +381,13 @@ function make_decision(source) --must be global to both A) be called from above 
 		-- BREAK: WAIT FOR TWICE AS CHEAP SPELL IF READY IN LESS THAN 1.2 SECS
 		elseif decision.best_spell and spell_recasts[decision.best_spell.recast_id]/60 < 1.2 and spell.mp_cost / decision.best_spell.mp_cost > 2 then
 			decision.awaiting_more_efficient_spell = true
+			logger(chat_colors.purple, '[SPELL BREAK] Broke on "' .. spell.en ..'" due to comparison to "' .. decision.best_spell.en .. '"...', false, true)
 			break
 			
 		-- BREAK: SPELL OVER MP_LIMIT (MODULE)
 		elseif mp_limit and spell.mp_cost > mp_limit then
 			decision.over_mp_limit = true
+			logger(chat_colors.purple, '[SPELL BREAK] Broke on "' .. spell.en ..'" due to being ' .. (spell.mp_cost - mp_limit) .. ' over the MP limit of ' .. mp_limit .. '.', false, true)
 			break
 		
 		-- RETURN: CHEAPEST SPELL TOO EXPENSIVE (NEED TO REST)
@@ -449,9 +450,13 @@ function make_decision(source) --must be global to both A) be called from above 
 	me.session_issues = (me.session_issues or 0) + 1 -- reset on OFF
 	local delay = decision.min_recast > 0 and (decision.min_recast/60) + 0.1 --[[recast issue]] or 4 --[[target issue]]
 	
+	-- RETURN: TARGET ISSUE, BUT ANOTHER SKILL IS CASTABLE (ex: if a target can't be found for Dark Magic, move on to immediately cast the first castable skill
+	-- TODO
+	
 	-- RETURN: REST IF NEEDED ON 10TH ISSUE (player is probably AFK, fill-er-up!)
 	if loop.issues == 10 then
-	
+		local resting = decide_to_rest('10th Issue', true)
+		if resting then return end
 	end
 	
 	-- DETERMINE WHEN TO NOTIFY (don't spam the player)
@@ -498,7 +503,7 @@ end
 -------------------------------------------------------------------------------------------------------------------
 function decide_to_rest(source, give_countdown, override)
 	source = source or 'UNDEFINED'
-	logger(chat_colors.purple, '[DECIDE TO REST] Source: ' .. source)
+	logger(chat_colors.purple, '[DECIDE TO REST] Source: ' .. source, true)
 	
 	-- RETURN: POTENTIALLY VALID MOB
 	for _, target in ipairs({'t', 'bt'}) do
@@ -526,6 +531,7 @@ function decide_to_rest(source, give_countdown, override)
 	else
 		windower.send_command('input /heal')
 	end
+	return true
 end
 
 
