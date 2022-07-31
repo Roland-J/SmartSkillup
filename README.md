@@ -1,3 +1,10 @@
+## Instructions
+1. Extract the "SmartSkillup-main" folder into your Windower/addons folder.
+2. Type `//lua l smartskillup` ingame
+3. Use the addon's ingame UI to add/remove skills and modules, then click ON to begin your skillup session. (See UI image below.)
+4. To manually pause your skillup session, click the UI's PAUSED button.
+5. For additional help, click the UI's HELP button or type `//sms help` ingame!
+
 ## Disclaimer
 1. SmartSkillup is a bot, though without the potential to impede other players - _aside from a few edge cases_ - nor can it affect the gil economy.
 2. Though it is rather harmless, please do not use SmartSkillup on servers where it is against the rules. If you do so anyways, it was not suggested here.
