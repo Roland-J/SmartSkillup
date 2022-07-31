@@ -476,7 +476,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 			if meta[click.t].settings.clickable and click.t:hover(x, y) then
 				call_events(click.t, 'left_click', true, drag ~= nil) --image:register_event('left_click', function(t, root_settings, release, drag) end)
 			end
-			if drag and meta[drag.t] and meta[drag.t].root_settings then
+			if drag and meta[drag.t] and meta[drag.t].root_settings then -- ensure drag.t not destroyed
 				config.save(meta[drag.t].root_settings)
 			end
 			click = nil

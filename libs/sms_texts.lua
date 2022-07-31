@@ -662,7 +662,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 
     -- Mouse drag
     if type == 0 then
-		if click then
+		if click and meta[click.t] then -- ensure click.t has not been destroyed
 			if not drag and meta[click.t].settings.flags.draggable then
 				local tolerance = meta[click.t].settings.flags.drag_tolerance
 				if tolerance == 0 or (math.abs(x - click.x) + math.abs(y - click.y)) / 2 > tolerance then
@@ -670,7 +670,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 					drag = {t = click.t, x = x, y = y, internal = {x = click.x - pos_x, y = click.y - pos_y}}
 				end
 			end
-			if drag then
+			if drag and meta[drag.t] then -- ensure drag.t not destroyed
 				drag.t:pos(x - drag.internal.x, y - drag.internal.y)
 				call_events(drag.t, 'drag', {x = x, y = y} --[[mouse]], {x = click.x, y = click.y} --[[click]]) -- a simple delta would desync if the initial delta exceeds the tolerance
 				drag.x, drag.y = x, y
@@ -697,17 +697,15 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 		
     -- Mouse left release
     elseif type == 2 then
-		if click then
+		if click and meta[click.t] then -- ensure click.t has not been destroyed
 			if meta[click.t].settings.flags.clickable and click.t:hover(x, y) then
 				call_events(click.t, 'left_click', true, drag ~= nil)
 			end
-			if drag then
-				if meta[drag.t].root_settings then
+			if drag and meta[drag.t] and meta[drag.t].root_settings then -- ensure drag.t not destroyed
 					config.save(meta[drag.t].root_settings)
-				end
-				drag = nil
 			end
 			click = nil
+			drag = nil
 			return true
 		end
     end
