@@ -355,7 +355,7 @@ function make_decision(source) --must be global to both A) be called from above 
 	
 	-- PROCESS MP LIMIT ISSUE
 	local spells_below_limit = mp_limit and valid_spells_sorted[skill_to_skillup]:count(function(s) return s.mp_cost <= mp_limit end)
-	if mp_limit and spells_below_limit == 0 and v then
+	if mp_limit and spells_below_limit == 0 then
 		windower.send_command('sms mplimit toggle silent')
 		logger(chat_colors.yellow, '[MP LIMIT ISSUE] No "' .. skill_to_skillup .. '" spells available cheaper than ' .. mp_limit .. '; increasing limit')
 	end
