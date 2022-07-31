@@ -39,7 +39,7 @@ resistable_spells = T{ --avoid these since skillups cannot occur on resists nor 
 }
 resistable_spells['Wind Instrument'] = resistable_spells.Singing -- assign this also to the indirect skill
 resistable_spells['Stringed Instrument'] = resistable_spells.Singing -- assign this also to the indirect skill
-untargetable_trusts = T{'Brygid','Star Sibyl','Kuyin Hathdenna','Kupofried','Moogle','Sakura'} -- used to avoid attempting to skillup on these trusts
+untargetable_trusts = T{'Brygid','Star Sibyl','Kuyin Hathdenna','Kupofried','Moogle','Sakura'} -- used to avoid attempting to cast on these trusts
 ignore_main_spells = T{ -- skills artificially available to main jobs who cannot necessarily skill up their related skill
 	'Dispelga', -- granted via the 'Daybreak' club
 	'Impact',   -- granted via the 'Twilight Cloak' or 'Crepuscular Cloak'
@@ -50,10 +50,10 @@ indirect_skills = T{ -- used to give spells to skills that inherit spells (Ex: W
 		T{id = 41, en = 'Stringed Instrument', casts = 0, parent = 'Singing'},
 	},
 	['Geomancy'] = T{
-		T{id = 45, en = 'Handbell', casts = 0, parent = 'Singing'},
+		T{id = 45, en = 'Handbell', casts = 0, parent = 'Geomancy'},
 	},
 }
--- Add Flags to Geo Buffs
+-- Add Flags to Geo Buffs (differentiate Geo-Refresh's "Refresh" by changing it to "Refresh (GEO)")
 for id, indi in pairs(res.spells:filter(function(s) return s.en:startswith('Indi-') end)) do
 	res.buffs[indi.status].en = res.buffs[indi.status].en .. ' (GEO)'
 	res.buffs[indi.status].indi = indi
@@ -79,7 +79,7 @@ modules_order = T{ -- used to build the modules in a strict order
 	'sublim',
 }
 numerals = T{'',' II',' III',' IV',' V',' VI'}
-bags_ordered = T{
+bags_ordered = T{ -- used for iterating bags, always processing inventory first
 	T({res.bags:find(function(bag) return bag.en == 'Inventory' end)}[2]),
 	T({res.bags:find(function(bag) return bag.en == 'Satchel'   end)}[2]),
 	T({res.bags:find(function(bag) return bag.en == 'Sack'      end)}[2]),
@@ -97,7 +97,7 @@ food_locations_template = T{ -- used in mapping out best/available food
 	T{T{}--[[inv]],T{}--[[satchel]],T{}--[[sack]],T{}--[[case]]}, -- Poultry Pitaru
 	T{T{}--[[inv]],T{}--[[satchel]],T{}--[[sack]],T{}--[[case]]}, -- Stuffed Pitaru
 }
-cities = S{ -- used to detect if the player can currently summon trusts
+cities = S{ -- used to detect if the player can currently summon trusts/cast Geo-Refresh
 	"Ru'Lude Gardens",     "Upper Jeuno",          "Lower Jeuno",         "Port Jeuno",      "Port Windurst",
 	"Windurst Waters",     "Windurst Woods",       "Windurst Walls",      "Heavens Tower",   "Port San d'Oria",
 	"Northern San d'Oria", "Southern San d'Oria",  "Port Bastok",         "Bastok Markets",  "Bastok Mines",
@@ -107,4 +107,4 @@ cities = S{ -- used to detect if the player can currently summon trusts
 JA_lock_buffs = S{'amnesia', 'omerta'}
 all_lock_buffs = S{'sleep','stun','charm','terror','petrification'}
 cast_lock_buffs = S{'silence','mute','omerta'}
-larr = chars.larr
+larr = chars.larr -- used for debug logging
