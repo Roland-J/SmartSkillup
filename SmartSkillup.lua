@@ -67,7 +67,6 @@ valid_spells = T{} -- the player's main job's current list of valid spells (base
 valid_spells_sorted = T{} -- the same as above, but sorted by weight (see below for details)
 ignored_spells = T{} -- a bonus record of spell handling, to provide curious users better visibility ingame to how their list was compiled
 main_skills = T{} -- the player's current list of skill statuses. structure: {['Healing Magic'] = {level= 360, capped= true, en= 'Healing Magic', id= 33}, etc}
-mp_limit = nil -- an optional limit, beneath which no spells will be cast (not local, needed in UI)
 
 
 
@@ -77,8 +76,8 @@ mp_limit = nil -- an optional limit, beneath which no spells will be cast (not l
 active = false -- the main on/off switch for skilling up
 paused = false -- toggles true when over the limit for decision.issues or out of mp and idle. (Over-Limit Triggers: invalid targets, or continuous movement)
 loop = T{issues=0, issues_max=6} -- misc flags about the loop
-going = false
-auto_shutdown = false
+going = false -- flags if the loop is going, used to prevent duplicate loops
+auto_shutdown = false -- tracks if the auto shutdown feature is engaged
 skill_data_retrieved = false -- tracks if skill data has been fetched from the server for the current session
 threads = T{} -- holds the names returned by various coroutines, used for closing them when needed
 decision = T{} -- holds information about the most recent decision
@@ -102,7 +101,6 @@ modules_default = T{
 	compo    = T{label = 'Compos.' , available = false, hidden = true , res = {res.job_abilities:find(function(r) return r.en == 'Composure' end)}[2]},
 	radial   = T{label = 'Radial.A', available = false, hidden = true , res = {res.job_abilities:find(function(r) return r.en == 'Radial Arcana' end)}[2]},
 }
-modules = nil -- a per-session copy of modules_default
 
 
 
@@ -268,8 +266,10 @@ function use_module()
 	
 	-- COMPOSURE OFF MODULE (after refresh/haste)
 	elseif buffactive.Composure then
-		windower.send_command('cancel composure')
-		return true
+		logger(chat_colors.grey, '[AUTO MODULE] Removing "Composure"...')
+		windower.send_command('cancel composure') -- won't occur for 1~2 seconds
+		buffactive.Composure = nil -- accelerate the flag
+		return use_module() -- restart module processing from the top
 	
 	-- GEO-REFRESH MODULE
 	elseif modules.georef.active and not modules.georef.buffactive and not me.in_town then
@@ -703,8 +703,7 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- Function that initializes the UI when skill data is retrieved if skill_data_retrieved is false
 -------------------------------------------------------------------------------------------------------------------
-function initialize_ui(reason)
-	logger(chat_colors.purple, '[UI] Initializing UI...' .. (reason and ' (Trigger: ' .. reason .. ')' or ''), true)
+function initialize_ui()
 	ui.set_header_text('SmartSkillup') -- Adds our label to the UI
 	ui.set_main_job(me.main_job) -- Adds our main job to the UI footer
 	local button_config = (function()
@@ -743,15 +742,8 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- The initialize function that is auto-called on load and on-job-change, and can also be called ad-hoc via //sms resetsession
 -------------------------------------------------------------------------------------------------------------------
-initialize_sms = function(reason)
-	if reason == 'user_choice' then
-		logger(chat_colors.yellow, '[SESSION RESET] Session resetting... (removing skills, deactivating, unpausing)')
-	elseif active or #skills_to_skillup > 0 then
-		logger(chat_colors.yellow, '[SESSION RESET] Session resetting, producing your skillup report...' .. (reason and ' (Trigger: ' .. reason .. ')' or ''))
-		print_skillup_report()
-	end
+initialize_sms = function()
 	active, paused, going, skill_data_retrieved, skill_to_skillup, skills_to_skillup = false, false, false, false, false, T{}
-	logger(chat_colors.yellow, '[INITIALIZE] SmartSkillup is initializing...')
 	build_me_table()
 	get_main_skills()
 	get_valid_spells()
@@ -895,6 +887,10 @@ windower.register_event('addon command', function(...)
 	elseif cmd[1] == 'nomagicskills' then -- called by UI button
 		logger(chat_colors.yellow, 'There are no magic skills that the player\'s main job can skill up.')
 	elseif cmd[1] == 'resetsession' then
+		if active or #skills_to_skillup > 0 then
+			logger(chat_colors.yellow, '[SESSION RESET] Session resetting, producing your skillup report...' .. (reason and ' (Trigger: ' .. reason .. ')' or ''))
+			print_skillup_report()
+		end
 		initialize_sms('user')
 	-------------------------
 	--[[ MODULE COMMANDS ]]--
@@ -1083,7 +1079,7 @@ windower.register_event('addon command', function(...)
 				logger(chat_colors.grey, tostring(subject))
 			end
 		end
-	elseif cmd[1] == 'eval' then -- ex: //sms make_decision()
+	elseif S{'eval','exec'}[cmd[1]:lower()] then -- ex: //sms make_decision()
 		logger(chat_colors.grey, '[EVALUATE] Evaluating "' .. cmd:slice(2):concat(' ') .. '"...')
 		assert(loadstring(cmd:slice(2):concat(' ')),logger(chat_colors.grey,'[EVALUATE ERROR] Failed to evaluate "' .. cmd:slice(2):concat(' ') .. '"') or 'eval error')()
 	-----------------------

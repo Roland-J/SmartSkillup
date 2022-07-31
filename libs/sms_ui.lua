@@ -389,7 +389,7 @@ function ui.create_buttons()
 		on = on and on.active and 'white' or 'grey',
 		slash = 'grey',
 		off = on and on.active and 'grey' or 'white',
-		paused = pause and (pause.active and 'white' or (pause.event and 'orange' or 'grey')) or 'grey',
+		paused = pause and (pause.active and 'white' or (pause.event and 'orange' or 'grey')) or event_pauses:length() > 0 and 'orange' or 'grey',
 	}
 	for _, name in ipairs({'header', 'on', 'slash', 'off', 'paused', 'help'}) do
 		-- Prepare Misc
@@ -602,10 +602,7 @@ function ui.rebuild_buttons()
 	if ui.button_config == nil then return end
 	
 	if #ui.meta > 0 then
-		--print('[REBUILD_BUTTONS] Destroying primitives and then rebuilding buttons...', #ui.meta)
 		ui.destroy_primitives()
-	else
-		--print('[REBUILD_BUTTONS] Building initial buttons...')
 	end
 	ui.create_buttons(ui.button_config, ui.sidecar_config)
 end

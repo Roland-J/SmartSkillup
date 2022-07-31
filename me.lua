@@ -253,7 +253,7 @@ function update_me_job(main_job_id, main_job_level, sub_job_id, sub_job_level)
 	me.sub_job, me.sub_job_full 		= res.jobs[sub_job_id].ens, res.jobs[sub_job_id].en
 	me.sub_job_id, me.sub_job_level	= sub_job_id, sub_job_level
 	logger(chat_colors.purple, '[JOB CHANGE] Job changed  to ' .. me.main_job .. main_job_level .. '/' .. me.sub_job .. sub_job_level .. ', re-initializing...', true)
-	initialize_sms('job change')
+	initialize_sms:schedule(0.5, true) -- delay for memory to update (ex: for buffs to clear out of windower.ffxi.get_player())
 end
 
 
