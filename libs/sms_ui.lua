@@ -9,7 +9,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of <addon name> nor the
+    * Neither the name of SmartSkillup nor the
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -275,8 +275,7 @@ function ui.update_user_scalars()
 	end
 end
 
-function ui.set_new_scalar(new_scalar)
-	user_scalar = new_scalar
+function ui.set_new_scalar()
 	ui.update_user_scalars()
 	ui.rebuild_buttons()
 end
@@ -347,6 +346,8 @@ function ui.create_buttons()
 		image:clickable(true)
 		image:register_event('left_click', ui.left_click_event)
 		image:register_event('drag', ui.move_event)
+		image:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+		image:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 		ui.store_table(image, name, 'image', button_config[name].command)
 		image:show()
 		

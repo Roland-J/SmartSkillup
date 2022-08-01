@@ -9,7 +9,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of <addon name> nor the
+    * Neither the name of SmartSkillup nor the
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -981,6 +981,18 @@ windower.register_event('addon command', function(...)
 	---------------------
 	--[[ UI COMMANDS ]]--
 	---------------------
+	elseif 'uizoom' == cmd[1]:lower() then
+		local mode = cmd[2] and S{'in','out'}[cmd[2]] and cmd:remove(2) or nil
+		if mode == nil then
+			logger(chat_colors.red, '[UI ZOOM] Please specify "in" or "out".')
+		else
+			if (settings.user_ui_scalar < 1.5 and mode == 'in') or (settings.user_ui_scalar > 0.5 and mode == 'out') then
+				local new_scalar = settings.user_ui_scalar + (mode == 'in' and 0.1 or -0.1)
+				settings.user_ui_scalar = new_scalar
+				config.save(settings)
+				ui.set_new_scalar(new_scalar)
+			end
+		end
 	elseif T{'uiscale', 'uis', 'scale'}:contains(cmd[1]:lower()) then
 		if cmd[2] == nil then
 			logger(chat_colors.grey, '[UI SCALE] Your UI\'s current scale is ' .. settings.user_ui_scalar)

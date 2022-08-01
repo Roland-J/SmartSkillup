@@ -9,7 +9,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of <addon name> nor the
+    * Neither the name of SmartSkillup nor the
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -462,13 +462,10 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 				click = {t = t, x = x, y = y, off_x = x - pos_x, off_y = y - pos_y}
 				if meta[t].settings.clickable then
 					call_events(t, 'left_click', false)
-					break -- stop at the topmost clickable element
+					return true -- stop at the topmost clickable element & stop client click (no vanilla menu interactions)
 				end
 			end
         end
-		if click then
-			return true --stop all our clicks from going to client (opens vanilla menus and such)
-		end
 
     -- Mouse left release
     elseif type == 2 then
@@ -483,7 +480,18 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 			drag = nil
 			return true
 		end
-    end
+    
+	-- Mouse scroll (new)
+	elseif type == 10 then
+		for i = #saved_images, 1, -1 do --converted to backwards iteration (z-index priorization)
+			local t = saved_images[i]
+			if t:hover(x, y) then
+				local scroll = delta == 1 and 'scroll_up' or 'scroll_down'
+				call_events(t, scroll)
+				return true
+			end
+		end
+	end
 
     return false
 end)
