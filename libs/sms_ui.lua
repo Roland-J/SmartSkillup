@@ -413,6 +413,8 @@ function ui.create_buttons()
 		misc:show()
 		misc:register_event('left_click', ui.left_click_event)
 		misc:register_event('drag', ui.move_event)
+		misc:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+		misc:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 		ui.store_table(misc, name, 'text', not T{'header', 'slash'}:contains(name) and 'sms ' .. name)
 	end
 	
@@ -431,6 +433,8 @@ function ui.create_buttons()
 	mj_hdr:draggable(true)
 	mj_hdr:visible(true)
 	mj_hdr:register_event('drag', ui.move_event)
+	mj_hdr:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+	mj_hdr:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 	ui.store_table(mj_hdr, 'mj_hdr', 'text')
 	
 	-- Add MainJob Label
@@ -447,6 +451,8 @@ function ui.create_buttons()
 	mj_label:draggable(true)
 	mj_label:visible(true)
 	mj_label:register_event('drag', ui.move_event)
+	mj_label:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+	mj_label:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 	ui.store_table(mj_label, 'mj_label', 'text')
 	
 	-- Add Shutdown Label
@@ -466,11 +472,12 @@ function ui.create_buttons()
 	shutdown:visible(true)
 	shutdown:register_event('left_click', ui.left_click_event)
 	shutdown:register_event('drag', ui.move_event)
+	shutdown:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+	shutdown:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 	ui.store_table(shutdown, 'shutdown', 'text', 'sms autoshutdown')
 	
 	
 	-- Build Sidecar
-	--if ui.placeholder or ui.sidecar_config == nil then return end
 	if not ui.placeholder and ui.sidecar_config ~= nil then
 		local sidecar_config = ui.sidecar_config
 		
@@ -490,6 +497,8 @@ function ui.create_buttons()
 		modules:visible(true)
 		modules:register_event('left_click', ui.left_click_event)
 		modules:register_event('drag', ui.move_event)
+		modules:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+		modules:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 		ui.store_table(modules, 'modules', 'text', 'sms modulehelp')
 		
 		for i, data in ipairs(sidecar_config) do
@@ -506,13 +515,13 @@ function ui.create_buttons()
 			sc_image:clickable(true)
 			sc_image:drag_tolerance(15)
 			sc_image:show()
-			--ui.store_table(sc_image, name, 'image', sidecar_config[name].command)
-			ui.store_table(sc_image, data.name, 'image', sidecar_config[i].command)
 			sc_image:register_event('drag', ui.move_event)
 			sc_image:register_event('left_click', ui.left_click_event)
+			sc_image:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+			sc_image:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
+			ui.store_table(sc_image, data.name, 'image', sidecar_config[i].command)
 			
 			-- Add Sidecar Text
-			--local sc_text = texts.new(name)
 			local sc_text = texts.new(data.name)
 			sc_text:pos(x + user_scalars.offsets.sc_texts.x, y)
 			sc_text:size(user_scalars.texts.size * 0.7)
@@ -524,7 +533,6 @@ function ui.create_buttons()
 			sc_text:bg_visible(false)
 			sc_text:draggable(false)
 			sc_text:show()
-			--ui.store_table(sc_text, name, 'text')
 			ui.store_table(sc_text, data.name, 'text')
 		end
 		
@@ -542,6 +550,8 @@ function ui.create_buttons()
 		limit_hdr:bg_visible(false)
 		limit_hdr:draggable(false) -- causes desync when dragged. why?
 		limit_hdr:visible(l and l.visible == true)
+		limit_hdr:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+		limit_hdr:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 		ui.store_table(limit_hdr, 'limit_hdr', 'text')
 		
 		local limit = texts.new(mp_limit and tostring(mp_limit) or '10')
@@ -557,6 +567,8 @@ function ui.create_buttons()
 		limit:clickable(true)
 		limit:visible(l and l.visible == true)
 		limit:register_event('left_click', ui.left_click_event)
+		limit:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+		limit:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 		ui.store_table(limit, 'limit', 'text', 'sms mplimit toggle silent')
 		
 	end

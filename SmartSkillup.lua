@@ -987,10 +987,9 @@ windower.register_event('addon command', function(...)
 			logger(chat_colors.red, '[UI ZOOM] Please specify "in" or "out".')
 		else
 			if (settings.user_ui_scalar < 1.5 and mode == 'in') or (settings.user_ui_scalar > 0.5 and mode == 'out') then
-				local new_scalar = settings.user_ui_scalar + (mode == 'in' and 0.1 or -0.1)
-				settings.user_ui_scalar = new_scalar
+				settings.user_ui_scalar = settings.user_ui_scalar + (mode == 'in' and 0.1 or -0.1)
 				config.save(settings)
-				ui.set_new_scalar(new_scalar)
+				ui.set_new_scalar()
 			end
 		end
 	elseif T{'uiscale', 'uis', 'scale'}:contains(cmd[1]:lower()) then
@@ -1003,7 +1002,7 @@ windower.register_event('addon command', function(...)
 			else
 				settings.user_ui_scalar = tonumber(cmd[2])
 				config.save(settings)
-				ui.set_new_scalar(new_scalar)
+				ui.set_new_scalar()
 			end
 		end
 	elseif 'uipos' == cmd[1]:lower() then
