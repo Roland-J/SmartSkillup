@@ -54,6 +54,7 @@ local events = {
 }
 
 local event_map = {
+	drag = 'left_drag',
 	click = 'left_click',
 	double_click = 'double_left_click',
 }
