@@ -46,11 +46,13 @@ local events = {
 	right_click = true,
 	double_right_click = true,
 	middle_click = true,
+	scroll_click = true,
 	scroll_up = true,
 	scroll_down = true,
 	hover = true,
 	left_drag = true,
 	right_drag = true,
+	scroll_drag = true,
 }
 
 local event_map = {
@@ -98,6 +100,7 @@ default_settings.flags.bottom = false
 default_settings.flags.bold = false
 default_settings.flags.left_draggable = true -- rename (legacy aliases added below)
 default_settings.flags.right_draggable = false -- new
+default_settings.flags.scroll_draggable = false -- new
 default_settings.flags.drag_tolerance = 0 -- new
 default_settings.flags.italic = false
 default_settings.padding = 0
@@ -157,6 +160,7 @@ local apply_settings = function(_, t, settings)
 	texts.bold(t, settings.flags.bold)
 	texts.left_draggable(t, settings.flags.left_draggable)
 	texts.right_draggable(t, settings.flags.right_draggable)
+	texts.scroll_draggable(t, settings.flags.scroll_draggable)
 	texts.drag_tolerance(t, settings.flags.drag_tolerance)
 	texts.right_justified(t, settings.flags.right)
 	texts.bottom_justified(t, settings.flags.bottom)
@@ -634,6 +638,14 @@ function texts.right_draggable(t, right_draggable)
 	meta[t].settings.flags.right_draggable = right_draggable
 end
 
+function texts.scroll_draggable(t, scroll_draggable)
+	if scroll_draggable == nil then
+		return meta[t].settings.flags.scroll_draggable
+	end
+
+	meta[t].settings.flags.scroll_draggable = scroll_draggable
+end
+
 function texts.drag_tolerance(t, tolerance) --number of pixels to move mouse before dragging
 	if tolerance == nil then
 		return meta[t].settings.flags.drag_tolerance
@@ -709,7 +721,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 	-- Mouse left/right click (added right click support and self-events)
 	elseif type == 1 or type == 4 then
 		if click or drag then return true end --ignore embedded clicks (ex: ldown > *rdown* > rup > lup)
-		local mode = ({[1]='left', [4]='right'})[type]
+		local mode = ({[1]='left', [4]='right', [7]='scroll'})[type]
 		for _, t in ipairs(windower.text.saved_texts) do
 			if t:hover(x, y) and meta[t] then
 				if click and drag then return true end --process no further once both have occurred
@@ -726,7 +738,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 
 	-- Mouse left/right release (added right-release support, self-events, and z-index support)
 	elseif type == 2 or type == 5 then
-		local mode = ({[2]='left', [5]='right'})[type]
+		local mode = ({[2]='left', [5]='right', [8]='scroll'})[type]
 		if (click and click.mode ~= mode) or (drag and drag.mode ~= mode) then return true end  --ignore embedded releases
 		if click or drag then
 			if click and meta[click.t] then

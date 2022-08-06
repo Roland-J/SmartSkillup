@@ -46,11 +46,13 @@ local events = {
 	right_click = true,
 	double_right_click = true,
 	middle_click = true,
+	scroll_click = true,
 	scroll_up = true,
 	scroll_down = true,
 	hover = true,
 	left_drag = true,
-	right_drag = true
+	right_drag = true,
+	scroll_drag = true,
 }
 
 local event_map = {
@@ -103,6 +105,7 @@ default_settings.repeatable.x = 1
 default_settings.repeatable.y = 1
 default_settings.left_draggable = true -- rename (legacy aliases added below)
 default_settings.right_draggable = false -- new
+default_settings.scroll_draggable = false -- new
 default_settings.drag_tolerance = 0 --new
 
 math.randomseed(os.clock())
@@ -143,6 +146,7 @@ local apply_settings = function(_, t, settings)
 	images.repeat_xy(t, settings.repeatable.x, settings.repeatable.y)
 	images.left_draggable(t, settings.left_draggable)
 	images.right_draggable(t, settings.right_draggable)
+	images.scroll_draggable(t, settings.scroll_draggable)
 
 	call_events(t, 'reload')
 end
@@ -359,6 +363,14 @@ function images.right_draggable(t, right_draggable) -- new for right-drag suppor
 	meta[t].settings.right_draggable = right_draggable
 end
 
+function images.scroll_draggable(t, scroll_draggable) -- new for right-drag support
+	if scroll_draggable == nil then
+		return meta[t].settings.scroll_draggable
+	end
+
+	meta[t].settings.scroll_draggable = scroll_draggable
+end
+
 function images.drag_tolerance(t, tolerance) --new: number of pixels to move mouse before dragging
 	if tolerance == nil then
 		return meta[t].settings.drag_tolerance
@@ -478,13 +490,13 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 	-- Mouse left/right click (added right click support and self-events)
 	elseif type == 1 or type == 4 then
 		if click or drag then return true end --ignore embedded clicks (ex: ldown > *rdown* > rup > lup)
-		local mode = ({[1]='left', [4]='right'})[type]
+		local mode = ({[1]='left', [4]='right', [7]='scroll'})[type]
 		for _, t in ipairs(saved_images) do
 			if t:hover(x, y) and meta[t] then
 				if click and drag then return true end --process no further once both have occurred
 				if not click and (meta[t].events or {})[mode .. '_click'] then
 					click = {t = t, x = x, y = y, mode = mode}
-					call_events(t, mode .. '_click', {release = false})
+					call_events(t, mode .. '_click', {release = false, x = x, y = y})
 				end
 				if not drag and meta[t].settings[mode .. '_draggable'] then
 					drag = T{t = t, click = {x = x, y = y}, mode = mode}
@@ -495,7 +507,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 
 	-- Mouse left/right release (added right-release support, self-events, and z-index support)
 	elseif type == 2 or type == 5 then
-		local mode = ({[2]='left', [5]='right'})[type]
+		local mode = ({[2]='left', [5]='right', [8]='scroll'})[type]
 		if (click and click.mode ~= mode) or (drag and drag.mode ~= mode) then return true end -- ignore embedded releases
 		if click or drag then
 			if click and meta[click.t] then
