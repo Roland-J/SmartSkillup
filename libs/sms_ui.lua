@@ -652,6 +652,10 @@ end
 local old_color
 local old_pos = {}
 function ui.left_click_event(t, root_settings, data)
+	-- IGNORE NO-COMMAND CLICKS
+	local i, m = ui.meta:find(function(m) return m.t == t end)
+	if not (m or {}).command then return end
+	
 	-- LEFT RELEASE
 	if data.release then
 		-- RESTORE TINT & POS
@@ -661,10 +665,7 @@ function ui.left_click_event(t, root_settings, data)
 		
 		-- EXECUTE COMMAND IF APPLICABLE
 		if t:hover(data.x, data.y) then
-			local i, m = ui.meta:find(function(m) return m.t == t end)
-			if m and m.command then
-				windower.send_command(m.command)
-			end
+			windower.send_command(m.command)
 		end
 	
 	-- LEFT CLICK
