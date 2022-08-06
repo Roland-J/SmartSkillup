@@ -671,38 +671,35 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 
 	if type == 0 then
 		-- Mouse hover (new) image:register_event('hover', function(t, settings, hovered) end)
-		if not click and not drag then
-			if hover then
-				hover = meta[hover.t] and hover or nil --reset hover on UI rebuild
-				if meta[(hover or {}).t] and not hover.t:hover(x, y)  then
-					call_events(hover.t, 'hover', false)
-					hover = nil
-				end
-			else
-				for _, t in ipairs(windower.text.saved_texts) do
-					if t:hover(x, y) and ((meta[t] or {}).events or {}).hover then
-						hover = {t = t}
-						return call_events(t, 'hover', true)
-					end
+		if hover then
+			hover = meta[hover.t] and hover or nil --reset hover on UI rebuild
+			if meta[(hover or {}).t] and not hover.t:hover(x, y)  then
+				call_events(hover.t, 'hover', false, click ~= nil)
+				hover = nil
+			end
+		else
+			for _, t in ipairs(windower.text.saved_texts) do
+				if t:hover(x, y) and ((meta[t] or {}).events or {}).hover then
+					hover = {t = t}
+					return call_events(t, 'hover', true)
 				end
 			end
+		end
 		
 		-- Mouse drag (added left/right drag, self-events, and new event args)
-		else
-			if drag and meta[drag.t] then --not destroyed
-				if not drag.active then
-					local tol = meta[drag.t].settings.flags.drag_tolerance
-					if tol == 0 or (math.abs(x - drag.click.x) + math.abs(y - drag.click.y)) / 2 > tol then
-						local pos_x, pos_y = drag.t:pos() --t's location on screen
-						local internal = {x = drag.click.x - pos_x, y = drag.click.y - pos_y} --mouse's location in t
-						drag:update({active = true, x = x, y = y, internal = internal})
-					end
+		if drag and meta[drag.t] then --not destroyed
+			if not drag.active then
+				local tol = meta[drag.t].settings.flags.drag_tolerance
+				if tol == 0 or (math.abs(x - drag.click.x) + math.abs(y - drag.click.y)) / 2 > tol then
+					local pos_x, pos_y = drag.t:pos() --t's location on screen
+					local internal = {x = drag.click.x - pos_x, y = drag.click.y - pos_y} --mouse's location in t
+					drag:update({active = true, x = x, y = y, internal = internal})
 				end
-				if drag.active then
-					drag.t:pos(x - drag.internal.x, y - drag.internal.y)
-					call_events(drag.t, drag.mode .. '_drag', {mouse = {x = x, y = y}, click = drag.click}) -- a simple delta would desync if the initial delta exceeds the tolerance
-					drag.x, drag.y = x, y
-				end
+			end
+			if drag.active then
+				drag.t:pos(x - drag.internal.x, y - drag.internal.y)
+				call_events(drag.t, drag.mode .. '_drag', {mouse = {x = x, y = y}, click = drag.click}) -- a simple delta would desync if the initial delta exceeds the tolerance
+				drag.x, drag.y = x, y
 			end
 		end
 
@@ -727,14 +724,16 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 	-- Mouse left/right release (added right-release support, self-events, and z-index support)
 	elseif type == 2 or type == 5 then
 		local mode = ({[2]='left', [5]='right'})[type]
-		if (click and click.mode == mode) or (drag and drag.mode == mode) then --ignore embedded releases
+		if (click and click.mode ~= mode) or (drag and drag.mode ~= mode) then return true end  --ignore embedded releases
+		if click or drag then
 			if click and meta[click.t] then
-				call_events(click.t, mode .. '_click', {release = true, x = x, y = y, dragged = drag and drag.active}) --image:register_event('left_click', function(t, root_settings, data) end)
+				call_events(click.t, mode .. '_click', {release = true, x = x, y = y, dragged = (drag or {}).active}) --image:register_event('left_click', function(t, root_settings, data) end)
 			end
 			if drag and drag.active then
 				if (meta[drag.t] or {}).root_settings then
 					config.save(meta[drag.t].root_settings)
 				end
+				call_events(drag.t, mode .. '_drag', {release = true})
 			end
 			click = nil
 			drag = nil

@@ -328,18 +328,16 @@ function ui.store_table(t, name, kind, command)
 	end
 	
 	-- REGISTER EVENTS
+	t:left_draggable(false)
 	if kind == 'image' then
-		t:left_draggable(false)
 		t:register_event('left_click', ui.left_click_event)
 		t:register_event('hover', ui.hover_event)
 	elseif S{'hitbox','misc'}[kind] then
 		if kind == 'misc' then t:register_event('left_click', ui.left_click_event) end
-		t:drag_tolerance(15)
-		t:register_event('left_drag', ui.move_event)
+		t:right_draggable(true)
+		t:register_event('right_drag', ui.move_event)
 		t:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
 		t:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-	else
-		t:left_draggable(false)
 	end
 end
 
@@ -626,13 +624,25 @@ end
 -- The function that moves the buttons in tandem, by comparing the positions of the click, mouse, and image (/headache)
 -------------------------------------------------------------------------------------------------------------------
 function ui.move_event(t, root_settings, data)
-	local i, m = ui.meta:find(function(m) return m.t == t end)
-	drag_positions = T{}
-	for i, m in ipairs(ui.meta) do
-		local internal = {x = data.click.x - m.pos.x, y = data.click.y - m.pos.y}
-		local x, y = data.mouse.x - internal.x, data.mouse.y - internal.y
-		m.t:pos(x, y)
-		drag_positions[i] = {x = x, y = y} --movement accelerates if if we update m.t.positions
+	if data.release then
+		-- END OF DRAG: SAVE NEW UI POSITION
+		for i, m in ipairs(ui.meta) do
+			m.pos = drag_positions[i]
+		end
+		drag_positions = nil
+		settings.top_left = ui.meta[1].pos
+		config.save(settings)
+		
+	else
+		-- DRAGGING: KEEP UI ELEMENTS SYNCED
+		local i, m = ui.meta:find(function(m) return m.t == t end)
+		drag_positions = T{}
+		for i, m in ipairs(ui.meta) do
+			local internal = {x = data.click.x - m.pos.x, y = data.click.y - m.pos.y}
+			local x, y = data.mouse.x - internal.x, data.mouse.y - internal.y
+			m.t:pos(x, y)
+			drag_positions[i] = {x = x, y = y} --movement accelerates if if we update m.t.positions
+		end
 	end
 end
 
@@ -641,39 +651,35 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- The function that handles mouse left-click events
 -------------------------------------------------------------------------------------------------------------------
-local oldColor
+local old_color
 function ui.left_click_event(t, root_settings, data)
 	if data.release then
-		t:color(oldColor[1],oldColor[2],oldColor[3])
-		-- RELEASE AFTER DRAG
-		if data.dragged then
-			for i, m in ipairs(ui.meta) do
-				m.pos = drag_positions[i]
-			end
-			drag_positions = nil
-			settings.top_left = ui.meta[1].pos
-			config.save(settings)
-		
-		-- RELEASE WITHOUT DRAG
-		else
-			if t:hover(data.x, data.y) then
-				local i, m = ui.meta:find(function(m) return m.t == t end)
-				if m and m.command then
-					windower.send_command(m.command)
-				end
+		t:color(old_color[1],old_color[2],old_color[3])
+		if data.dragged then return end
+		if t:hover(data.x, data.y) then
+			local i, m = ui.meta:find(function(m) return m.t == t end)
+			if m and m.command then
+				windower.send_command(m.command)
 			end
 		end
 	else
-		oldColor = {t:color()}
-		t:color(oldColor[1]-30,oldColor[2]-30,oldColor[3]-30)
+		old_color = {t:color()}
+		t:color(old_color[1]-30,old_color[2]-30,old_color[3]-30)
 	end
 end
 
 
 
-function ui.hover_event(t, root_settings, hovered)
-	local c = hovered and 220 or 255
-	t:color(c, c, c)
+function ui.hover_event(t, root_settings, hovered, active_click)
+	-- UNHOVERED WITH CLICK STILL DOWN
+	if active_click then
+		old_color = {255,255,255}
+	
+	-- HOVER/UNHOVER WITHOUT CLICK DOWN
+	else
+		local c = hovered and 220 or 255
+		t:color(c, c, c)
+	end
 end
 
 
