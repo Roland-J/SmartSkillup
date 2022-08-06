@@ -24,7 +24,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.]]
 
-_addon.version = '0.0.7'
+_addon.version = '0.0.8'
 _addon.name = 'SmartSkillup'
 _addon.author = 'RolandJ'
 _addon.commands = {'sms','smartskillup'}
@@ -749,6 +749,7 @@ initialize_sms = function()
 	get_valid_spells()
 	determine_modules()
 	skill_data_request_timeout() -- triggers UI build once data is retrieved
+	me.awaiting_initialize = nil
 end
 
 
@@ -1143,7 +1144,7 @@ windower.register_event('addon command', function(...)
 		logger(chat_colors.grey, 'automodules  - Displays information on the automatic modules not listed in the UI.')
 		logger(chat_colors.grey, 'help         - Shows this help text.')
 		logger(chat_colors.grey, 'DID YOU KNOW: You can only recieve skillups for skills natively available to your current main job.')
-		logger(chat_colors.grey, 'DID YOU KNOW: The UI can be dragged with right mouse clicks! Try it out!')
+		logger(chat_colors.grey, 'DID YOU KNOW: The UI can be dragged with right mouse clicks or zoomed with scroll! Try it out!')
 		logger(chat_colors.grey, 'DID YOU KNOW: For additional module information, type "//sms modulehelp"!')
 	else
 		return windower.send_command('skillup help')

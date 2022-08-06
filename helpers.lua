@@ -102,13 +102,13 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- A toggle that adds support for allowing a player to skill multiple skills in one session
 -------------------------------------------------------------------------------------------------------------------
-toggle_to_next_skill = function()
+toggle_to_next_skill = function(cap_event)
 	if #skills_to_skillup == 0 then
 		skill_to_skillup = nil
 		if not active then return end
 		return coroutine.schedule(function()
 			logger(chat_colors.yellow, '[END OF SESSION] No skills remain in the current session. Ending session...')
-			if auto_shutdown then 
+			if cap_event and auto_shutdown then 
 				if me.status == 'Engaged' then
 					me.shutdown_awaiting_disengage = true
 				else
@@ -140,7 +140,7 @@ remove_skill_from_session = function(skill_en, cap_event)
 	elseif #skills_to_skillup >= 1 then
 		if skills_to_skillup:find(skill_en) then
 			skills_to_skillup:delete(skill_en)
-			toggle_to_next_skill()
+			toggle_to_next_skill(cap_event)
 			ui.button_active(skill_en, false)
 		else
 			return logger(chat_colors.purple, '[REMOVE ISSUE] Cannot remove "' .. skill_en .. '", it is not the skill_to_skillup (' .. skill_to_skillup .. ')', true)
@@ -275,7 +275,7 @@ function process_skill_data(packet)
 				ui.set_subtext(data.en, level)
 			end
 			-- SKILL CAP/UNCAP (uncap on levelup)
-			if capped ~= data.capped then
+			if capped ~= data.capped and not me.awaiting_initialize then
 				if capped then
 					logger(chat_colors.green, '[SKILL CAP] Congratulations, "' .. skill .. '" skill has capped!')
 					remove_skill_from_session(data.en, true)
