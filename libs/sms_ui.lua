@@ -96,16 +96,6 @@ local user_scalars = T{} -- updated by config
 
 
 
-local events = T{
-	images = {
-		'left-click',
-	},
-	texts = {
-		'left_click'
-	}
-}
-
-
 -------------------------------------------------------------------------------------------------------------------
 -- Function that generates hitboxes for the main and sidecar buttons used to capture all mouse clicks in said areas
 -------------------------------------------------------------------------------------------------------------------
@@ -339,13 +329,17 @@ function ui.store_table(t, name, kind, command)
 	
 	-- REGISTER EVENTS
 	if kind == 'image' then
+		t:left_draggable(false)
 		t:register_event('left_click', ui.left_click_event)
 		t:register_event('hover', ui.hover_event)
-	elseif kind == 'hitbox' or kind == 'misc' then
+	elseif S{'hitbox','misc'}[kind] then
 		if kind == 'misc' then t:register_event('left_click', ui.left_click_event) end
+		t:drag_tolerance(15)
 		t:register_event('left_drag', ui.move_event)
 		t:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
 		t:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
+	else
+		t:left_draggable(false)
 	end
 end
 
@@ -386,7 +380,6 @@ function ui.create_buttons()
 		image:path(path .. 'Button002-' .. (m and m.active and 'Orange' or 'Blue') .. '.png')
 		image:fit(false) --this, if true, would make the button ignore the custom size
 		image:size(user_scalars.images.width, user_scalars.images.height)
-		image:drag_tolerance(15)
 		ui.store_table(image, name, 'image', button_config[name].command)
 		image:show()
 		
@@ -400,7 +393,6 @@ function ui.create_buttons()
 		text:italic(true)
 		text:bold(true)
 		text:bg_visible(false)
-		text:left_draggable(false)
 		ui.store_table(text, name, 'text')
 		text:show()
 		
@@ -414,7 +406,6 @@ function ui.create_buttons()
 		subtext:italic(true)
 		subtext:bold(true)
 		subtext:bg_visible(false)
-		subtext:left_draggable(false)
 		ui.store_table(subtext, name, 'subtext')
 		subtext:show()
 	end
@@ -424,7 +415,6 @@ function ui.create_buttons()
 	local hitbox = images.new()
 	hitbox:pos(hitbox_config.x, hitbox_config.y)
 	hitbox:size(hitbox_config.width, hitbox_config.height)
-	hitbox:drag_tolerance(15)
 	hitbox:transparency(1)
 	ui.store_table(hitbox, 'main', 'hitbox')
 	hitbox:show()
@@ -455,8 +445,6 @@ function ui.create_buttons()
 		misc:bold(true)
 		misc:italic(italic)
 		misc:bg_visible(false)
-		misc:left_draggable(true)
-		misc:drag_tolerance(15)
 		ui.store_table(misc, name, 'misc', not T{'header', 'slash'}:contains(name) and 'sms ' .. name)
 		misc:show()
 	end
@@ -472,8 +460,6 @@ function ui.create_buttons()
 	mj_hdr:bold(true)
 	mj_hdr:italic(true)
 	mj_hdr:bg_visible(false)
-	mj_hdr:drag_tolerance(15)
-	mj_hdr:left_draggable(true)
 	ui.store_table(mj_hdr, 'mj_hdr', 'misc')
 	mj_hdr:visible(true)
 	
@@ -487,8 +473,6 @@ function ui.create_buttons()
 	mj_label:bold(true)
 	mj_label:italic(true)
 	mj_label:bg_visible(false)
-	mj_label:drag_tolerance(15)
-	mj_label:left_draggable(true)
 	ui.store_table(mj_label, 'mj_label', 'misc')
 	mj_label:visible(true)
 	
@@ -503,8 +487,6 @@ function ui.create_buttons()
 	shutdown:bold(true)
 	shutdown:italic(true)
 	shutdown:bg_visible(false)
-	shutdown:drag_tolerance(15)
-	shutdown:left_draggable(true)
 	ui.store_table(shutdown, 'shutdown', 'misc', 'sms autoshutdown')
 	shutdown:visible(true)
 	
@@ -523,8 +505,6 @@ function ui.create_buttons()
 		modules:bold(true)
 		modules:italic(true)
 		modules:bg_visible(false)
-		modules:drag_tolerance(15)
-		modules:left_draggable(true)
 		ui.store_table(modules, 'modules', 'misc', 'sms modulehelp')
 		modules:show(true)
 		
@@ -539,7 +519,6 @@ function ui.create_buttons()
 			sc_image:path(path .. 'Button002-' .. (m and m.active and 'Orange' or 'Blue') .. '.png')
 			sc_image:fit(false) --this, if true, would make the button ignore the custom size
 			sc_image:size(user_scalars.images.sidecar_w, user_scalars.images.sidecar_h)
-			sc_image:drag_tolerance(15)
 			ui.store_table(sc_image, data.name, 'image', sidecar_config[i].command)
 			sc_image:show()
 			
@@ -553,7 +532,6 @@ function ui.create_buttons()
 			sc_text:italic(true)
 			sc_text:bold(true)
 			sc_text:bg_visible(false)
-			sc_text:left_draggable(false)
 			ui.store_table(sc_text, data.name, 'text')
 			sc_text:show()
 		end
