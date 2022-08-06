@@ -1090,9 +1090,10 @@ windower.register_event('addon command', function(...)
 				logger(chat_colors.grey, tostring(subject))
 			end
 		end
-	elseif S{'eval','exec'}[cmd[1]:lower()] then -- ex: //sms make_decision()
+	elseif S{'eval','exec'}[cmd[1]:lower()] then -- ex: //sms eval ui.rebuild_buttons()
 		logger(chat_colors.grey, '[EVALUATE] Evaluating "' .. cmd:slice(2):concat(' ') .. '"...')
-		assert(loadstring(cmd:slice(2):concat(' ')),logger(chat_colors.grey,'[EVALUATE ERROR] Failed to evaluate "' .. cmd:slice(2):concat(' ') .. '"') or 'eval error')()
+		assert(loadstring(cmd:slice(2):concat(' ')), 'Eval error, check syntax: ' .. cmd:slice(2):concat(' '))()
+		logger(chat_colors.grey, '[EVALUATE FINISHED] Processing complete.')
 	-----------------------
 	--[[ HELP COMMANDS ]]--
 	-----------------------

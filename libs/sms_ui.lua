@@ -31,9 +31,17 @@ require('tables')
 
 
 -------------------------------------------------------------------------------------------------------------------
+-- The UI object, contains metadata and functions for modifying the UI
+-------------------------------------------------------------------------------------------------------------------
+local ui = T{
+	meta = T{} -- The master record of UI objects, used for tracking active state, lookups, and caching for deletion
+}
+
+
+
+-------------------------------------------------------------------------------------------------------------------
 -- Various local variables used throughout the UI
 -------------------------------------------------------------------------------------------------------------------
-
 local drag_positions -- cache of positions while dragging. (drag moves need original pos intact)
 local path = windower.addon_path .. 'data/' -- where the button images are located (ui.set_path(str))
 local header_text -- an optional header. (set using ui.set_header_text(str))
@@ -50,7 +58,6 @@ local colors = {
 -------------------------------------------------------------------------------------------------------------------
 -- Set the button size settings using the user's UI scalar (CREDIT: Joshuateverday: https://github.com/SirEdeonX/FFXIAddons/issues/6)
 -------------------------------------------------------------------------------------------------------------------
-
 local windower_settings = windower.get_windower_settings()
 local ui_scalar = ((windower_settings.ui_x_res * 1.0) / (windower_settings.x_res * 1.0)) --TODO: user customizable
 local scalars = T{
@@ -77,33 +84,56 @@ local scalars = T{
 		help      = {x = 172 * ui_scalar, y = -11 * ui_scalar},
 		mj_hdr    = {x =  90 * ui_scalar, y =  -3 * ui_scalar},
 		mj_label  = {x = 173 * ui_scalar, y =  -3 * ui_scalar},
-		shutdown  = {x =   2 * ui_scalar, y =  -3 * ui_scalar},
+		shutdown  = {x =   4 * ui_scalar, y =  -3 * ui_scalar},
 		sidecar   = {x = 210 * ui_scalar, y =   0},
 		sc_texts  = {x =   6 * ui_scalar, y =   0},
 		modules   = {x = 213 * ui_scalar, y = -11 * ui_scalar},
 		limit_hdr = {x =   3 * ui_scalar, y =  -3 * ui_scalar},
 		limit     = {x =  46 * ui_scalar, y =  -3 * ui_scalar},
-		--TODO: MP LIMIT (∞ default)
 	},
 }
 local user_scalars = T{} -- updated by config
 
 
 
--------------------------------------------------------------------------------------------------------------------
--- The UI object, contains metadata and functions for modifying the UI
--------------------------------------------------------------------------------------------------------------------
-
-local ui = T{
-	meta = T{} -- The master record of UI objects, used for tracking active state, lookups, and caching for deletion
+local events = T{
+	images = {
+		'left-click',
+	},
+	texts = {
+		'left_click'
+	}
 }
+
+
+-------------------------------------------------------------------------------------------------------------------
+-- Function that generates hitboxes for the main and sidecar buttons used to capture all mouse clicks in said areas
+-------------------------------------------------------------------------------------------------------------------
+function ui.generate_hitbox_config(kind)
+	if kind == nil then return end
+	
+	if kind == 'main' then
+		return {
+			x = ui.top_left.x,
+			y = ui.top_left.y,
+			width  = user_scalars.images.width,
+			height = (user_scalars.images.height + 1) * #ui.button_labels
+		}
+	elseif kind == 'sidecar' then
+		return {
+			x = ui.top_left.x + user_scalars.offsets.sidecar.x - 1, -- close the gap
+			y = ui.top_left.y + user_scalars.offsets.sidecar.y,
+			width  = user_scalars.images.sidecar_w + 1, -- offset the gap fill
+			height = (user_scalars.images.sidecar_h + 1) * #ui.sidecar_config
+		}
+	end
+end
 
 
 
 -------------------------------------------------------------------------------------------------------------------
 -- functions that update various flags for the UI (path, header, main job)
 -------------------------------------------------------------------------------------------------------------------
-
 function ui.set_path(str)
 	if str == nil then return end
 	path = str
@@ -120,14 +150,13 @@ function ui.set_main_job(str)
 end
 
 
+
 -------------------------------------------------------------------------------------------------------------------
 -- A function that sets the UI's main button config (if ommitted, UI cannot be built)
 -------------------------------------------------------------------------------------------------------------------
-
 --[[ SAMPLE: button_config = {Label = { active='input //cmd1', command='input //cmd'}, subtext='151', color='blue'}]]
 function ui.set_button_config(button_config, sidecar_config) 
 	if button_config == nil or type(button_config) ~= 'table' then return end
-	--print('[SET_BUTTON_CONFIG] Setting button config...')
 	ui.button_config = button_config
 	if type(sidecar_config) == 'table' then
 		ui.sidecar_config = sidecar_config
@@ -135,7 +164,6 @@ function ui.set_button_config(button_config, sidecar_config)
 	
 	-- Reset meta (destroy elements first, if applicable)
 	if #ui.meta > 0 then
-		--print('[SET_BUTTON_CONFIG] Calling destroy_primitives...', #ui.meta)
 		ui.destroy_primitives()
 	end
 	ui.meta = T{}
@@ -146,7 +174,6 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- Functions that set and tracks the state of the header's ON/OFF button on-click commands (if ommitted, no ON/OFF buttons are displayed)
 -------------------------------------------------------------------------------------------------------------------
-
 function ui.active(bool)
 	if bool == nil then return end
 	
@@ -202,7 +229,6 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- A function that lets you toggle the active state on any button based on the button's label
 -------------------------------------------------------------------------------------------------------------------
-
 function ui.button_active(name, bool, sidecar)
 	if name == nil then return end
 	local _, m = ui.meta:find(function(m) return m.name == name and m.kind == 'image' end)
@@ -213,6 +239,10 @@ function ui.button_active(name, bool, sidecar)
 end
 
 
+
+-------------------------------------------------------------------------------------------------------------------
+-- A function that lets you show/hide any particular image, given a unique name
+-------------------------------------------------------------------------------------------------------------------
 function ui.set_visible(name, bool)
 	if name == nil or bool == nil then return end
 	local _, m = ui.meta:find(function(m) return m.name == name end)
@@ -223,10 +253,11 @@ function ui.set_visible(name, bool)
 	m.hidden = not bool
 end
 
+
+
 -------------------------------------------------------------------------------------------------------------------
 -- A functions that let you modify text (change skill level on skillup, change color on cap, etc)
 -------------------------------------------------------------------------------------------------------------------
-
 function ui.set_text(name, str)
 	if name == nil or str == nil then return end
 	local _, m = ui.meta:find(function(m) return m.name == name and m.kind == 'text' end)
@@ -254,10 +285,10 @@ function ui.set_text_color(name, color)
 end
 
 
--------------------------------------------------------------------------------------------------------------------
--- A function that builds user scalars by multiplying the default scalars by the user scalar preference (which defaults to 1)
--------------------------------------------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------------------------------------------
+-- A functions that build/maintain user scalars by multiplying the default scalars by the user scalar preference
+-------------------------------------------------------------------------------------------------------------------
 function ui.update_user_scalars()
 	user_scalars = T{}
 	for k, v in pairs(scalars) do
@@ -280,6 +311,11 @@ function ui.set_new_scalar()
 	ui.rebuild_buttons()
 end
 
+
+
+-------------------------------------------------------------------------------------------------------------------
+-- A function stores each image/text uniformly in the ui.meta table
+-------------------------------------------------------------------------------------------------------------------
 function ui.store_table(t, name, kind, command)
 	local _, m = ui.meta:find(function(m) return m.name == name and m.kind == kind end)
 	local x, y = t:pos()
@@ -300,6 +336,17 @@ function ui.store_table(t, name, kind, command)
 			hidden = name:startswith('limit') and true or nil,
 		}
 	end
+	
+	-- REGISTER EVENTS
+	if kind == 'image' then
+		t:register_event('left_click', ui.left_click_event)
+		t:register_event('hover', ui.hover_event)
+	elseif kind == 'hitbox' or kind == 'misc' then
+		if kind == 'misc' then t:register_event('left_click', ui.left_click_event) end
+		t:register_event('left_drag', ui.move_event)
+		t:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
+		t:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
+	end
 end
 
 
@@ -307,7 +354,6 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- The function that creates and displays the UI (main, misc, and sidecar buttons)
 -------------------------------------------------------------------------------------------------------------------
-
 function ui.create_buttons()
 	if not ui.button_config then return end
 	local button_config = ui.button_config
@@ -317,9 +363,7 @@ function ui.create_buttons()
 	ui.update_user_scalars()
 	
 	-- Sort incoming table by keys (for alphabetically ordered button labels)
-	local button_labels = T{}
-	for k in pairs(button_config) do button_labels:insert(k) end
-	table.sort(button_labels)
+	local button_labels = button_config:keyset():sort()
 	ui.button_labels = button_labels
 	
 	-- Detect/create placeholder
@@ -343,11 +387,6 @@ function ui.create_buttons()
 		image:fit(false) --this, if true, would make the button ignore the custom size
 		image:size(user_scalars.images.width, user_scalars.images.height)
 		image:drag_tolerance(15)
-		image:clickable(true)
-		image:register_event('left_click', ui.left_click_event)
-		image:register_event('drag', ui.move_event)
-		image:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-		image:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 		ui.store_table(image, name, 'image', button_config[name].command)
 		image:show()
 		
@@ -361,7 +400,7 @@ function ui.create_buttons()
 		text:italic(true)
 		text:bold(true)
 		text:bg_visible(false)
-		text:draggable(false)
+		text:left_draggable(false)
 		ui.store_table(text, name, 'text')
 		text:show()
 		
@@ -372,14 +411,23 @@ function ui.create_buttons()
 		subtext:color(colors[debugModes:find(true) and 'white' or button_config[name].color]())
 		subtext:stroke_width(user_scalars.texts.stroke_width)
 		subtext:pad(user_scalars.texts.padding)
-		--subtext:right_justified(true) --bugs out on subtext:pos(x, y)
 		subtext:italic(true)
 		subtext:bold(true)
 		subtext:bg_visible(false)
-		subtext:draggable(false)
+		subtext:left_draggable(false)
 		ui.store_table(subtext, name, 'subtext')
 		subtext:show()
 	end
+	
+	-- Add Main Area's Hitbox (for zoom/drag of buttons)
+	local hitbox_config = ui.generate_hitbox_config('main')
+	local hitbox = images.new()
+	hitbox:pos(hitbox_config.x, hitbox_config.y)
+	hitbox:size(hitbox_config.width, hitbox_config.height)
+	hitbox:drag_tolerance(15)
+	hitbox:transparency(1)
+	ui.store_table(hitbox, 'main', 'hitbox')
+	hitbox:show()
 	
 	-- Get Cached Semi-Uniform Misc
 	local _, on = ui.meta:find(function(m) return m.name == 'on' end)
@@ -407,15 +455,10 @@ function ui.create_buttons()
 		misc:bold(true)
 		misc:italic(italic)
 		misc:bg_visible(false)
+		misc:left_draggable(true)
 		misc:drag_tolerance(15)
-		misc:draggable(true)
-		misc:clickable(true)
+		ui.store_table(misc, name, 'misc', not T{'header', 'slash'}:contains(name) and 'sms ' .. name)
 		misc:show()
-		misc:register_event('left_click', ui.left_click_event)
-		misc:register_event('drag', ui.move_event)
-		misc:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-		misc:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-		ui.store_table(misc, name, 'text', not T{'header', 'slash'}:contains(name) and 'sms ' .. name)
 	end
 	
 	-- Add Main Job Skills Subheader
@@ -430,12 +473,9 @@ function ui.create_buttons()
 	mj_hdr:italic(true)
 	mj_hdr:bg_visible(false)
 	mj_hdr:drag_tolerance(15)
-	mj_hdr:draggable(true)
+	mj_hdr:left_draggable(true)
+	ui.store_table(mj_hdr, 'mj_hdr', 'misc')
 	mj_hdr:visible(true)
-	mj_hdr:register_event('drag', ui.move_event)
-	mj_hdr:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-	mj_hdr:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-	ui.store_table(mj_hdr, 'mj_hdr', 'text')
 	
 	-- Add MainJob Label
 	local mj_label = texts.new(main_job)
@@ -448,12 +488,9 @@ function ui.create_buttons()
 	mj_label:italic(true)
 	mj_label:bg_visible(false)
 	mj_label:drag_tolerance(15)
-	mj_label:draggable(true)
+	mj_label:left_draggable(true)
+	ui.store_table(mj_label, 'mj_label', 'misc')
 	mj_label:visible(true)
-	mj_label:register_event('drag', ui.move_event)
-	mj_label:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-	mj_label:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-	ui.store_table(mj_label, 'mj_label', 'text')
 	
 	-- Add Shutdown Label
 	local _, sd = ui.meta:find(function(m) return m.name == 'shutdown' end) --get cache
@@ -467,14 +504,9 @@ function ui.create_buttons()
 	shutdown:italic(true)
 	shutdown:bg_visible(false)
 	shutdown:drag_tolerance(15)
-	shutdown:draggable(true)
-	shutdown:clickable(true)
+	shutdown:left_draggable(true)
+	ui.store_table(shutdown, 'shutdown', 'misc', 'sms autoshutdown')
 	shutdown:visible(true)
-	shutdown:register_event('left_click', ui.left_click_event)
-	shutdown:register_event('drag', ui.move_event)
-	shutdown:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-	shutdown:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-	ui.store_table(shutdown, 'shutdown', 'text', 'sms autoshutdown')
 	
 	
 	-- Build Sidecar
@@ -491,15 +523,10 @@ function ui.create_buttons()
 		modules:bold(true)
 		modules:italic(true)
 		modules:bg_visible(false)
-		modules:clickable(true)
 		modules:drag_tolerance(15)
-		modules:draggable(true)
-		modules:visible(true)
-		modules:register_event('left_click', ui.left_click_event)
-		modules:register_event('drag', ui.move_event)
-		modules:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-		modules:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-		ui.store_table(modules, 'modules', 'text', 'sms modulehelp')
+		modules:left_draggable(true)
+		ui.store_table(modules, 'modules', 'misc', 'sms modulehelp')
+		modules:show(true)
 		
 		for i, data in ipairs(sidecar_config) do
 			local __, m = ui.meta:find(function(m) return m.name == data.name and m.kind == 'image' end)
@@ -512,14 +539,9 @@ function ui.create_buttons()
 			sc_image:path(path .. 'Button002-' .. (m and m.active and 'Orange' or 'Blue') .. '.png')
 			sc_image:fit(false) --this, if true, would make the button ignore the custom size
 			sc_image:size(user_scalars.images.sidecar_w, user_scalars.images.sidecar_h)
-			sc_image:clickable(true)
 			sc_image:drag_tolerance(15)
-			sc_image:show()
-			sc_image:register_event('drag', ui.move_event)
-			sc_image:register_event('left_click', ui.left_click_event)
-			sc_image:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-			sc_image:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
 			ui.store_table(sc_image, data.name, 'image', sidecar_config[i].command)
+			sc_image:show()
 			
 			-- Add Sidecar Text
 			local sc_text = texts.new(data.name)
@@ -531,16 +553,27 @@ function ui.create_buttons()
 			sc_text:italic(true)
 			sc_text:bold(true)
 			sc_text:bg_visible(false)
-			sc_text:draggable(false)
-			sc_text:show()
+			sc_text:left_draggable(false)
 			ui.store_table(sc_text, data.name, 'text')
+			sc_text:show()
 		end
+	
+		-- Add Sidecar Area's Hitbox (for zoom/drag of buttons)
+		local hitbox_config = ui.generate_hitbox_config('sidecar')
+		local hitbox = images.new()
+		hitbox:pos(hitbox_config.x, hitbox_config.y)
+		hitbox:size(hitbox_config.width, hitbox_config.height)
+		hitbox:transparency(1)
+		ui.store_table(hitbox, 'sidecar', 'hitbox')
+		hitbox:show()
 		
-		local _, l = ui.meta:find(function(m) return m.name == 'limit' end)
-		local pos = ui.meta[#ui.meta-1-(l and 2 or 0)].pos
-			
+		local _, cached_limit = ui.meta:find(function(m) return m.name == 'limit' end)
+		local limit_top_left = {
+			x = ui.top_left.x + user_scalars.offsets.sidecar.x + user_scalars.offsets.limit_hdr.x,
+			y = ui.top_left.y + ((user_scalars.images.sidecar_h + 1) * #ui.sidecar_config)
+		}
 		local limit_hdr = texts.new('MP LIMIT:')
-		limit_hdr:pos(pos.x + user_scalars.offsets.limit_hdr.x, pos.y + user_scalars.offsets.limit_hdr.y + user_scalars.images.sidecar_h)
+		limit_hdr:pos(limit_top_left.x  + user_scalars.offsets.limit_hdr.x, limit_top_left.y + user_scalars.offsets.limit_hdr.y)
 		limit_hdr:size(user_scalars.texts.size * 0.5)
 		limit_hdr:color(colors.white())
 		limit_hdr:stroke_width(user_scalars.texts.stroke_width*2)
@@ -548,14 +581,12 @@ function ui.create_buttons()
 		limit_hdr:bold(true)
 		limit_hdr:italic(true)
 		limit_hdr:bg_visible(false)
-		limit_hdr:draggable(false) -- causes desync when dragged. why?
-		limit_hdr:visible(l and l.visible == true)
-		limit_hdr:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-		limit_hdr:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-		ui.store_table(limit_hdr, 'limit_hdr', 'text')
+		--limit_hdr:left_draggable(false) -- used to cause desync when dragged. why?
+		limit_hdr:visible(cached_limit and cached_limit.visible == true)
+		ui.store_table(limit_hdr, 'limit_hdr', 'misc')
 		
 		local limit = texts.new(mp_limit and tostring(mp_limit) or '10')
-		limit:pos(pos.x + user_scalars.offsets.limit.x, pos.y + user_scalars.offsets.limit.y + user_scalars.images.sidecar_h)
+		limit:pos(limit_top_left.x + user_scalars.offsets.limit.x, limit_top_left.y + user_scalars.offsets.limit.y)
 		limit:size(user_scalars.texts.size * 0.5)
 		limit:color(colors.orange())
 		limit:stroke_width(user_scalars.texts.stroke_width*2)
@@ -563,13 +594,9 @@ function ui.create_buttons()
 		limit:bold(true)
 		limit:italic(true)
 		limit:bg_visible(false)
-		limit:draggable(true) -- causes desync when dragged. why?
-		limit:clickable(true)
-		limit:visible(l and l.visible == true)
-		limit:register_event('left_click', ui.left_click_event)
-		limit:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
-		limit:register_event('scroll_down', function() windower.send_command('sms uizoom out') end)
-		ui.store_table(limit, 'limit', 'text', 'sms mplimit toggle silent')
+		--limit:left_draggable(false) -- used to cause desync when dragged. why?
+		limit:visible(cached_limit and cached_limit.visible == true)
+		ui.store_table(limit, 'limit', 'misc', 'sms mplimit toggle silent')
 		
 	end
 end
@@ -601,16 +628,11 @@ function ui.destroy_primitives()
 	end
 end
 
-function ui.deactivate_all()
-	for _, m in ipairs(ui.meta) do
-		m.active = false
-	end
-end
+
 
 -------------------------------------------------------------------------------------------------------------------
 -- A function that can rebuild the UI.  Useful if the UI needs to be rebuilt or shown.
 -------------------------------------------------------------------------------------------------------------------
-
 function ui.rebuild_buttons()
 	if ui.button_config == nil then return end
 	
@@ -620,41 +642,60 @@ function ui.rebuild_buttons()
 	ui.create_buttons(ui.button_config, ui.sidecar_config)
 end
 
-function ui.reset_meta()
-	ui.meta = T{}
-end
+
 
 -------------------------------------------------------------------------------------------------------------------
 -- The function that moves the buttons in tandem, by comparing the positions of the click, mouse, and image (/headache)
 -------------------------------------------------------------------------------------------------------------------
-
-function ui.move_event(t, root_settings, mouse, click)
+function ui.move_event(t, root_settings, data)
+	local i, m = ui.meta:find(function(m) return m.t == t end)
 	drag_positions = T{}
 	for i, m in ipairs(ui.meta) do
-		local internal = {x = click.x - m.pos.x, y = click.y - m.pos.y}
-		local x, y = mouse.x - internal.x, mouse.y - internal.y
+		local internal = {x = data.click.x - m.pos.x, y = data.click.y - m.pos.y}
+		local x, y = data.mouse.x - internal.x, data.mouse.y - internal.y
 		m.t:pos(x, y)
 		drag_positions[i] = {x = x, y = y} --movement accelerates if if we update m.t.positions
 	end
 end
 
-function ui.left_click_event(t, root_settings, release, dragged)
-	--print('[UI CLICK EVENT] release: ',release,' dragged: ',dragged)
-	if release then
-		if dragged then
+
+
+-------------------------------------------------------------------------------------------------------------------
+-- The function that handles mouse left-click events
+-------------------------------------------------------------------------------------------------------------------
+local oldColor
+function ui.left_click_event(t, root_settings, data)
+	if data.release then
+		t:color(oldColor[1],oldColor[2],oldColor[3])
+		-- RELEASE AFTER DRAG
+		if data.dragged then
 			for i, m in ipairs(ui.meta) do
 				m.pos = drag_positions[i]
 			end
 			drag_positions = nil
 			settings.top_left = ui.meta[1].pos
 			config.save(settings)
+		
+		-- RELEASE WITHOUT DRAG
 		else
-			local i, m = ui.meta:find(function(m) return m.t == t end)
-			if m.command then
-				windower.send_command(m.command)
+			if t:hover(data.x, data.y) then
+				local i, m = ui.meta:find(function(m) return m.t == t end)
+				if m and m.command then
+					windower.send_command(m.command)
+				end
 			end
 		end
+	else
+		oldColor = {t:color()}
+		t:color(oldColor[1]-30,oldColor[2]-30,oldColor[3]-30)
 	end
+end
+
+
+
+function ui.hover_event(t, root_settings, hovered)
+	local c = hovered and 220 or 255
+	t:color(c, c, c)
 end
 
 

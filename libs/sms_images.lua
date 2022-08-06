@@ -37,6 +37,7 @@ local meta = {}
 saved_images = {}
 local drag
 local click
+local hover
 
 local events = {
     reload = true,
@@ -48,7 +49,7 @@ local events = {
     scroll_up = true,
     scroll_down = true,
     hover = true,
-    drag = true,
+    left_drag = true,
     right_drag = true
 }
 
@@ -94,9 +95,9 @@ default_settings.texture.fit = true
 default_settings.repeatable = {}
 default_settings.repeatable.x = 1
 default_settings.repeatable.y = 1
-default_settings.draggable = true
+default_settings.left_draggable = true -- renamed
+default_settings.right_draggable = false -- new
 default_settings.drag_tolerance = 0 --new
-default_settings.clickable = false --new
 
 math.randomseed(os.clock())
 
@@ -134,8 +135,8 @@ local apply_settings = function(_, t, settings)
     images.fit(t, settings.texture.fit)
     images.path(t, settings.texture.path)
     images.repeat_xy(t, settings.repeatable.x, settings.repeatable.y)
-    images.draggable(t, settings.draggable)
-	images.clickable(t, settings.clickable) --new
+    images.left_draggable(t, settings.left_draggable)
+    images.right_draggable(t, settings.right_draggable)
 
     call_events(t, 'reload')
 end
@@ -330,12 +331,20 @@ function images.repeat_xy(t, x, y)
     m.settings.repeatable.y = y
 end
 
-function images.draggable(t, draggable) --renamed to Arcon's rename of this var in texts.lua
-    if draggable == nil then
-        return meta[t].settings.draggable
+function images.left_draggable(t, left_draggable)
+    if left_draggable == nil then
+        return meta[t].settings.left_draggable
     end
 
-    meta[t].settings.draggable = draggable
+    meta[t].settings.left_draggable = left_draggable
+end
+
+function images.right_draggable(t, right_draggable) -- new for right-drag support
+    if right_draggable == nil then
+        return meta[t].settings.right_draggable
+    end
+
+    meta[t].settings.right_draggable = right_draggable
 end
 
 function images.drag_tolerance(t, tolerance) --new: number of pixels to move mouse before dragging
@@ -345,23 +354,6 @@ function images.drag_tolerance(t, tolerance) --new: number of pixels to move mou
 
     meta[t].settings.drag_tolerance = tolerance
 end
-
-function images.clickable(t, clickable) --new: defaults to false, allows clickable+draggable to be an optional scenario
-    if clickable == nil then
-        return meta[t].settings.clickable
-    end
-
-    meta[t].settings.clickable = clickable
-end
-
---[[ TODO: Make and move this to a widgets library
-function images.sync(t, sync) --new: allows an addon to keep its images synced positionally on drags
-    if sync == nil then
-        return meta[t].settings.sync
-    end
-
-    meta[t].settings.sync = sync
-end]]
 
 function images.color(t, red, green, blue)
     local m = meta[t]
@@ -437,58 +429,84 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
     if blocked then return end
 
 	if type == 0 then
-		if click and meta[click.t] then -- ensure click.t not destroyed
-			if not drag and meta[click.t].settings.draggable then
-				local tolerance = meta[click.t].settings.drag_tolerance
-				if tolerance == 0 or (math.abs(x - click.x) + math.abs(y - click.y)) / 2 > tolerance then
-					local pos_x, pos_y = click.t:pos()
-					drag = {t = click.t, x = x, y = y, internal = {x = click.x - pos_x, y = click.y - pos_y}}
+		-- Mouse hover (new) image:register_event('hover', function(t, settings, hovered) end)
+		if not click and not drag then
+			if hover then
+				hover = meta[hover.t] and hover or nil --reset hover on UI rebuild
+				if meta[(hover or {}).t] and not hover.t:hover(x, y)  then
+					call_events(hover.t, 'hover', false)
+					hover = nil
+				end
+			else
+				for _, t in ipairs(saved_images) do
+					if t:hover(x, y) and ((meta[t] or {}).events or {}).hover then
+						hover = {t = t}
+						return call_events(t, 'hover', true)
+					end
 				end
 			end
-			if drag and meta[drag.t] then -- ensure drag.t not destroyed
-				drag.t:pos(x - drag.internal.x, y - drag.internal.y)
-				call_events(drag.t, 'drag', {x = x, y = y} --[[mouse]], {x = click.x, y = click.y} --[[click]]) -- a simple delta would desync if the initial delta exceeds the tolerance
-				drag.x, drag.y = x, y
+		
+		-- Mouse drag (added left/right drag, self-events, and new event args)
+		else
+			if drag and meta[drag.t] then --not destroyed
+				if not drag.active then
+					local tol = meta[drag.t].settings.drag_tolerance
+					if tol == 0 or (math.abs(x - drag.click.x) + math.abs(y - drag.click.y)) / 2 > tol then
+						local pos_x, pos_y = drag.t:pos() --t's location on screen
+						local internal = {x = drag.click.x - pos_x, y = drag.click.y - pos_y} --mouse's location in t
+						drag:update({active = true, x = x, y = y, internal = internal})
+					end
+				end
+				if drag.active then
+					drag.t:pos(x - drag.internal.x, y - drag.internal.y)
+					call_events(drag.t, drag.mode .. '_drag', {mouse = {x = x, y = y}, click = drag.click}) -- a simple delta would desync if the initial delta exceeds the tolerance
+					drag.x, drag.y = x, y
+				end
 			end
-			return true
 		end
 
-    -- Mouse left click
-    elseif type == 1 then
-		for i = #saved_images, 1, -1 do --converted to backwards iteration (z-index priorization)
-			local t = saved_images[i]
-			if t:hover(x, y) then
-                local pos_x, pos_y = t:pos()
-				click = {t = t, x = x, y = y, off_x = x - pos_x, off_y = y - pos_y}
-				if meta[t].settings.clickable then
-					call_events(t, 'left_click', false)
-					return true -- stop at the topmost clickable element & stop client click (no vanilla menu interactions)
+    -- Mouse left/right click (added right click support and self-events)
+    elseif type == 1 or type == 4 then
+		if click or drag then return true end --ignore embedded clicks (ex: ldown > *rdown* > rup > lup)
+		local mode = ({[1]='left', [4]='right'})[type]
+		for _, t in ipairs(saved_images) do
+			if t:hover(x, y) and meta[t] then
+				if click and drag then return true end --process no further once both have occurred
+				if not click and (meta[t].events or {})[mode .. '_click'] then
+					click = {t = t, x = x, y = y, mode = mode}
+					call_events(t, mode .. '_click', {release = false})
+				end
+				if not drag and meta[t].settings[mode .. '_draggable'] then
+					drag = T{t = t, click = {x = x, y = y}, mode = mode}
 				end
 			end
         end
+		return click or drag and true
 
-    -- Mouse left release
-    elseif type == 2 then
-		if click then
-			if meta[click.t] and meta[click.t].settings.clickable and click.t:hover(x, y) then -- ensure click.t has not been destroyed
-				call_events(click.t, 'left_click', true, drag ~= nil) --image:register_event('left_click', function(t, root_settings, release, drag) end)
+    -- Mouse left/right release (added right-release support, self-events, and z-index support)
+    elseif type == 2 or type == 5 then
+		local mode = ({[2]='left', [5]='right'})[type]
+		if (click and click.mode == mode) or (drag and drag.mode == mode) then --ignore embedded releases
+			if click and meta[click.t] then
+				call_events(click.t, mode .. '_click', {release = true, x = x, y = y, dragged = drag and drag.active}) --image:register_event('left_click', function(t, root_settings, data) end)
 			end
-			if drag and meta[drag.t] and meta[drag.t].root_settings then -- ensure drag.t not destroyed
-				config.save(meta[drag.t].root_settings)
+			if drag and drag.active then
+				if (meta[drag.t] or {}).root_settings then
+					config.save(meta[drag.t].root_settings)
+				end
 			end
 			click = nil
 			drag = nil
 			return true
 		end
     
-	-- Mouse scroll (new)
+	-- Mouse scroll (brand new)
 	elseif type == 10 then
-		for i = #saved_images, 1, -1 do --converted to backwards iteration (z-index priorization)
-			local t = saved_images[i]
-			if t:hover(x, y) then
-				local scroll = delta == 1 and 'scroll_up' or 'scroll_down'
-				call_events(t, scroll)
-				return true
+		local mode = delta > 0 and 'up' or 'down' --variable delta
+		for _, t in ipairs(saved_images) do
+			if t:hover(x, y) and ((meta[t] or {}).events or {})['scroll_' .. mode] then
+				call_events(t, 'scroll_' .. mode)
+				return true -- stop at top-most element
 			end
 		end
 	end

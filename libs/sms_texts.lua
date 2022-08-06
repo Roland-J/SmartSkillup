@@ -35,9 +35,9 @@ local texts = {}
 local meta = {}
 
 windower.text.saved_texts = {}
-local dragged
 local drag
 local click
+local hover
 
 local events = {
     reload = true,
@@ -49,7 +49,7 @@ local events = {
     scroll_up = true,
     scroll_down = true,
     hover = true,
-    drag = true,
+    left_drag = true,
     right_drag = true,
 }
 
@@ -90,9 +90,9 @@ default_settings.flags = {}
 default_settings.flags.right = false
 default_settings.flags.bottom = false
 default_settings.flags.bold = false
-default_settings.flags.draggable = true
+default_settings.flags.left_draggable = true --modified
+default_settings.flags.right_draggable = false --new
 default_settings.flags.drag_tolerance = 0 --new
-default_settings.flags.clickable = false --new
 default_settings.flags.italic = false
 default_settings.padding = 0
 default_settings.text = {}
@@ -149,9 +149,9 @@ local apply_settings = function(_, t, settings)
     texts.pad(t, settings.padding)
     texts.italic(t, settings.flags.italic)
     texts.bold(t, settings.flags.bold)
-	texts.draggable(t, settings.flags.draggable)
+	texts.left_draggable(t, settings.flags.left_draggable)
+	texts.right_draggable(t, settings.flags.right_draggable)
 	texts.drag_tolerance(t, settings.flags.drag_tolerance)
-	texts.clickable(t, settings.flags.clickable)
     texts.right_justified(t, settings.flags.right)
     texts.bottom_justified(t, settings.flags.bottom)
     texts.visible(t, meta[t].status.visible)
@@ -606,12 +606,22 @@ function texts.stroke_alpha(t, alpha)
     meta[t].settings.text.stroke.alpha = alpha
 end
 
-function texts.draggable(t, draggable)
-    if draggable == nil then
-        return meta[t].settings.flags.draggable
+function texts.left_draggable(t, left_draggable)
+    if left_draggable == nil then
+        return meta[t].settings.flags.left_draggable
     end
 
-    meta[t].settings.flags.draggable = draggable
+    meta[t].settings.flags.left_draggable = left_draggable
+end
+
+texts.draggable = texts.left_draggable
+
+function texts.right_draggable(t, right_draggable)
+    if right_draggable == nil then
+        return meta[t].settings.flags.right_draggable
+    end
+
+    meta[t].settings.flags.right_draggable = right_draggable
 end
 
 function texts.drag_tolerance(t, tolerance) --number of pixels to move mouse before dragging
@@ -620,14 +630,6 @@ function texts.drag_tolerance(t, tolerance) --number of pixels to move mouse bef
     end
 
     meta[t].settings.flags.drag_tolerance = tolerance
-end
-
-function texts.clickable(t, clickable) --renamed to Arcon's rename of this var in texts.lua
-    if clickable == nil then
-        return meta[t].settings.flags.clickable
-    end
-
-    meta[t].settings.flags.clickable = clickable
 end
 
 -- Returns true if the coordinates are currently over the text object
@@ -660,63 +662,88 @@ end
 windower.register_event('mouse', function(type, x, y, delta, blocked)
     if blocked then return end
 
-    -- Mouse drag
-    if type == 0 then
-		if click and meta[click.t] then -- ensure click.t has not been destroyed
-			if not drag and meta[click.t].settings.flags.draggable then
-				local tolerance = meta[click.t].settings.flags.drag_tolerance
-				if tolerance == 0 or (math.abs(x - click.x) + math.abs(y - click.y)) / 2 > tolerance then
-					local pos_x, pos_y = click.t:pos()
-					drag = {t = click.t, x = x, y = y, internal = {x = click.x - pos_x, y = click.y - pos_y}}
+	if type == 0 then
+		-- Mouse hover (new) image:register_event('hover', function(t, settings, hovered) end)
+		if not click and not drag then
+			if hover then
+				hover = meta[hover.t] and hover or nil --reset hover on UI rebuild
+				if meta[(hover or {}).t] and not hover.t:hover(x, y)  then
+					call_events(hover.t, 'hover', false)
+					hover = nil
+				end
+			else
+				for _, t in ipairs(windower.text.saved_texts) do
+					if t:hover(x, y) and ((meta[t] or {}).events or {}).hover then
+						hover = {t = t}
+						return call_events(t, 'hover', true)
+					end
 				end
 			end
-			if drag and meta[drag.t] then -- ensure drag.t not destroyed
-				drag.t:pos(x - drag.internal.x, y - drag.internal.y)
-				call_events(drag.t, 'drag', {x = x, y = y} --[[mouse]], {x = click.x, y = click.y} --[[click]]) -- a simple delta would desync if the initial delta exceeds the tolerance
-				drag.x, drag.y = x, y
+		
+		-- Mouse drag (added left/right drag, self-events, and new event args)
+		else
+			if drag and meta[drag.t] then --not destroyed
+				if not drag.active then
+					local tol = meta[drag.t].settings.flags.drag_tolerance
+					if tol == 0 or (math.abs(x - drag.click.x) + math.abs(y - drag.click.y)) / 2 > tol then
+						local pos_x, pos_y = drag.t:pos() --t's location on screen
+						local internal = {x = drag.click.x - pos_x, y = drag.click.y - pos_y} --mouse's location in t
+						drag:update({active = true, x = x, y = y, internal = internal})
+					end
+				end
+				if drag.active then
+					drag.t:pos(x - drag.internal.x, y - drag.internal.y)
+					call_events(drag.t, drag.mode .. '_drag', {mouse = {x = x, y = y}, click = drag.click}) -- a simple delta would desync if the initial delta exceeds the tolerance
+					drag.x, drag.y = x, y
+				end
 			end
-			return true
 		end
 
-    -- Mouse left click
-    elseif type == 1 then
-		for i = #windower.text.saved_texts, 1, -1 do --converted to backwards iteration (z-index priorization)
-			local t = windower.text.saved_texts[i]
-			if t:hover(x, y) then
-                local pos_x, pos_y = t:pos()
-				click = {t = t, x = x, y = y, off_x = x - pos_x, off_y = y - pos_y}
-				if meta[t].settings.flags.clickable then
-					call_events(t, 'left_click', false)
-					return true -- stop at the topmost clickable element & stop client click (no vanilla menu interactions)
+    -- Mouse left/right click (added right click support and self-events)
+    elseif type == 1 or type == 4 then
+		if click or drag then return true end --ignore embedded clicks (ex: ldown > *rdown* > rup > lup)
+		local mode = ({[1]='left', [4]='right'})[type]
+		for _, t in ipairs(windower.text.saved_texts) do
+			if t:hover(x, y) and meta[t] then
+				if click and drag then return true end --process no further once both have occurred
+				if not click and (meta[t].events or {})[mode .. '_click'] then
+					click = {t = t, x = x, y = y, mode = mode}
+					call_events(t, mode .. '_click', {release = false})
+				end
+				if not drag and meta[t].settings.flags[mode .. '_draggable'] then
+					drag = T{t = t, click = {x = x, y = y}, mode = mode}
 				end
 			end
         end
-		
-    -- Mouse left release
-    elseif type == 2 then
-		if click then
-			if meta[click.t] and meta[click.t].settings.flags.clickable and click.t:hover(x, y) then -- ensure click.t has not been destroyed
-				call_events(click.t, 'left_click', true, drag ~= nil)
+		return click or drag and true
+
+    -- Mouse left/right release (added right-release support, self-events, and z-index support)
+    elseif type == 2 or type == 5 then
+		local mode = ({[2]='left', [5]='right'})[type]
+		if (click and click.mode == mode) or (drag and drag.mode == mode) then --ignore embedded releases
+			if click and meta[click.t] then
+				call_events(click.t, mode .. '_click', {release = true, x = x, y = y, dragged = drag and drag.active}) --image:register_event('left_click', function(t, root_settings, data) end)
 			end
-			if drag and meta[drag.t] and meta[drag.t].root_settings then -- ensure drag.t not destroyed
-				config.save(meta[drag.t].root_settings)
+			if drag and drag.active then
+				if (meta[drag.t] or {}).root_settings then
+					config.save(meta[drag.t].root_settings)
+				end
 			end
 			click = nil
 			drag = nil
 			return true
 		end
     
-	-- Mouse scroll (new)
+	-- Mouse scroll (brand new)
 	elseif type == 10 then
-		for i = #windower.text.saved_texts, 1, -1 do --converted to backwards iteration (z-index priorization)
-			local t = windower.text.saved_texts[i]
-			if t:hover(x, y) then
-				local scroll = delta == 1 and 'scroll_up' or 'scroll_down'
-				call_events(t, scroll)
-				return true
+		local mode = delta > 0 and 'up' or 'down' --variable delta
+		for _, t in ipairs(windower.text.saved_texts) do
+			if t:hover(x, y) and ((meta[t] or {}).events or {})['scroll_' .. mode] then
+				call_events(t, 'scroll_' .. mode)
+				return true -- stop at top-most element
 			end
 		end
-    end
+	end
 
     return false
 end)
