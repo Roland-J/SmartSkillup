@@ -95,10 +95,9 @@ default_settings.flags = {}
 default_settings.flags.right = false
 default_settings.flags.bottom = false
 default_settings.flags.bold = false
-default_settings.flags.left_draggable = true --renamed
-default_settings.flags.right_draggable = false --new
-default_settings.flags.draggable = default_settings.flags.left_draggable --alias
-default_settings.flags.drag_tolerance = 0 --new
+default_settings.flags.left_draggable = true -- rename (legacy aliases added below)
+default_settings.flags.right_draggable = false -- new
+default_settings.flags.drag_tolerance = 0 -- new
 default_settings.flags.italic = false
 default_settings.padding = 0
 default_settings.text = {}
@@ -203,6 +202,10 @@ function texts.new(str, settings, root_settings)
 	if type(str) ~= 'string' then
 		str, settings, root_settings = '', str, settings
 	end
+	
+	-- Capture legacy draggable alias for settings
+	if type(settings) == 'table' then settings.left_draggable = settings.draggable end
+	if type(root_settings) == 'table' then root_settings.left_draggable = root_settings.draggable end
 
 	-- Sets the settings table to the provided settings, if not separately provided and the settings are a valid settings table
 	if not _libs.config then
@@ -617,7 +620,6 @@ function texts.left_draggable(t, left_draggable)
 		return meta[t].settings.flags.left_draggable
 	end
 
-	meta[t].settings.flags.draggable = left_draggable
 	meta[t].settings.flags.left_draggable = left_draggable
 end
 

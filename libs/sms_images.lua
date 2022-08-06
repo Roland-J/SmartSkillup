@@ -100,9 +100,8 @@ default_settings.texture.fit = true
 default_settings.repeatable = {}
 default_settings.repeatable.x = 1
 default_settings.repeatable.y = 1
-default_settings.left_draggable = true -- rename
+default_settings.left_draggable = true -- rename (legacy aliases added below)
 default_settings.right_draggable = false -- new
-default_settings.draggable = default_settings.left_draggable -- alias
 default_settings.drag_tolerance = 0 --new
 
 math.randomseed(os.clock())
@@ -151,6 +150,10 @@ function images.new(str, settings, root_settings)
 	if type(str) ~= 'string' then
 		str, settings, root_settings = '', str, settings
 	end
+	
+	-- Capture legacy draggable alias for settings
+	if type(settings) == 'table' then settings.left_draggable = settings.draggable end
+	if type(root_settings) == 'table' then root_settings.left_draggable = root_settings.draggable end
 
 	-- Sets the settings table to the provided settings, if not separately provided and the settings are a valid settings table
 	if not _libs.config then
@@ -342,7 +345,6 @@ function images.left_draggable(t, left_draggable)
 		return meta[t].settings.left_draggable
 	end
 
-	meta[t].settings.draggable = left_draggable
 	meta[t].settings.left_draggable = left_draggable
 end
 
