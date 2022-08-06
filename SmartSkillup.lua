@@ -1143,6 +1143,7 @@ windower.register_event('addon command', function(...)
 		logger(chat_colors.grey, 'automodules  - Displays information on the automatic modules not listed in the UI.')
 		logger(chat_colors.grey, 'help         - Shows this help text.')
 		logger(chat_colors.grey, 'DID YOU KNOW: You can only recieve skillups for skills natively available to your current main job.')
+		logger(chat_colors.grey, 'DID YOU KNOW: The UI can be dragged with right mouse clicks! Try it out!')
 		logger(chat_colors.grey, 'DID YOU KNOW: For additional module information, type "//sms modulehelp"!')
 	else
 		return windower.send_command('skillup help')

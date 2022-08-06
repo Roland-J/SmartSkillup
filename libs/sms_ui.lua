@@ -612,9 +612,7 @@ end
 function ui.rebuild_buttons()
 	if ui.button_config == nil then return end
 	
-	if #ui.meta > 0 then
-		ui.destroy_primitives()
-	end
+	if (ui.meta[1] or {}).t then ui.destroy_primitives() end -- destroy primitives first if any still exist
 	ui.create_buttons(ui.button_config, ui.sidecar_config)
 end
 
@@ -627,7 +625,7 @@ function ui.move_event(t, root_settings, data)
 	if data.release then
 		-- END OF DRAG: SAVE NEW UI POSITION
 		for i, m in ipairs(ui.meta) do
-			m.pos = drag_positions[i]
+			m.pos = drag_positions[i] -- only do this post-drag
 		end
 		drag_positions = nil
 		settings.top_left = ui.meta[1].pos
@@ -641,7 +639,7 @@ function ui.move_event(t, root_settings, data)
 			local internal = {x = data.click.x - m.pos.x, y = data.click.y - m.pos.y}
 			local x, y = data.mouse.x - internal.x, data.mouse.y - internal.y
 			m.t:pos(x, y)
-			drag_positions[i] = {x = x, y = y} --movement accelerates if if we update m.t.positions
+			drag_positions[i] = {x = x, y = y} -- movement accelerates if we m.pos mid-drag!
 		end
 	end
 end
@@ -670,6 +668,9 @@ end
 
 
 
+-------------------------------------------------------------------------------------------------------------------
+-- The function that handles mouse hover events
+-------------------------------------------------------------------------------------------------------------------
 function ui.hover_event(t, root_settings, hovered, active_click)
 	-- UNHOVERED WITH CLICK STILL DOWN
 	if active_click then
@@ -681,6 +682,7 @@ function ui.hover_event(t, root_settings, hovered, active_click)
 		t:color(c, c, c)
 	end
 end
+
 
 
 return ui

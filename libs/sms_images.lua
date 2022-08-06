@@ -438,7 +438,7 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 	if blocked then return end
 
 	if type == 0 then
-		-- Mouse hover (new) image:register_event('hover', function(t, settings, hovered) end)
+		-- Mouse hover (new)
 		if hover then
 			hover = meta[hover.t] and hover or nil --reset hover on UI rebuild
 			if meta[(hover or {}).t] and not hover.t:hover(x, y)  then
@@ -492,10 +492,10 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 	-- Mouse left/right release (added right-release support, self-events, and z-index support)
 	elseif type == 2 or type == 5 then
 		local mode = ({[2]='left', [5]='right'})[type]
-		if (click and click.mode ~= mode) or (drag and drag.mode ~= mode) then return true end 
-		if click or drag then --ignore embedded releases
+		if (click and click.mode ~= mode) or (drag and drag.mode ~= mode) then return true end -- ignore embedded releases
+		if click or drag then
 			if click and meta[click.t] then
-				call_events(click.t, mode .. '_click', {release = true, x = x, y = y, dragged = (drag or {}).active}) --image:register_event('left_click', function(t, root_settings, data) end)
+				call_events(click.t, mode .. '_click', {release = true, x = x, y = y, dragged = (drag or {}).active})
 			end
 			if drag and drag.active then
 				if (meta[drag.t] or {}).root_settings then
