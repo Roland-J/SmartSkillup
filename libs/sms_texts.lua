@@ -90,8 +90,9 @@ default_settings.flags = {}
 default_settings.flags.right = false
 default_settings.flags.bottom = false
 default_settings.flags.bold = false
-default_settings.flags.left_draggable = true --modified
+default_settings.flags.left_draggable = true --renamed
 default_settings.flags.right_draggable = false --new
+default_settings.flags.draggable = default_settings.flags.left_draggable --alias
 default_settings.flags.drag_tolerance = 0 --new
 default_settings.flags.italic = false
 default_settings.padding = 0
@@ -611,6 +612,7 @@ function texts.left_draggable(t, left_draggable)
         return meta[t].settings.flags.left_draggable
     end
 
+	meta[t].settings.flags.draggable = left_draggable
     meta[t].settings.flags.left_draggable = left_draggable
 end
 

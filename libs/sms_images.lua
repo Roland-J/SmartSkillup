@@ -95,8 +95,9 @@ default_settings.texture.fit = true
 default_settings.repeatable = {}
 default_settings.repeatable.x = 1
 default_settings.repeatable.y = 1
-default_settings.left_draggable = true -- renamed
+default_settings.left_draggable = true -- rename
 default_settings.right_draggable = false -- new
+default_settings.draggable = default_settings.left_draggable -- alias
 default_settings.drag_tolerance = 0 --new
 
 math.randomseed(os.clock())
@@ -336,8 +337,11 @@ function images.left_draggable(t, left_draggable)
         return meta[t].settings.left_draggable
     end
 
+	meta[t].settings.draggable = left_draggable
     meta[t].settings.left_draggable = left_draggable
 end
+
+images.draggable = images.left_draggable
 
 function images.right_draggable(t, right_draggable) -- new for right-drag support
     if right_draggable == nil then
