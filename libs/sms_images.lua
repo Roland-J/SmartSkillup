@@ -441,14 +441,15 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 	if blocked then return end
 
 	if type == 0 then
-		-- Mouse hover (new)
+		-- Mouse unhover (new)
 		if hover then
 			hover = meta[hover.t] and hover or nil --reset hover on UI rebuild
 			if meta[(hover or {}).t] and not hover.t:hover(x, y)  then
 				call_events(hover.t, 'hover', false, click ~= nil)
 				hover = nil
 			end
-		else
+		-- Mouse hover (new)
+		elseif not click then
 			for _, t in ipairs(saved_images) do
 				if t:hover(x, y) and ((meta[t] or {}).events or {}).hover then
 					hover = {t = t}

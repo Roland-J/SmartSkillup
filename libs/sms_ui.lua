@@ -650,19 +650,30 @@ end
 -- The function that handles mouse left-click events
 -------------------------------------------------------------------------------------------------------------------
 local old_color
+local old_pos = {}
 function ui.left_click_event(t, root_settings, data)
+	-- LEFT RELEASE
 	if data.release then
+		-- RESTORE TINT & POS
 		t:color(old_color[1],old_color[2],old_color[3])
+		t:pos(old_pos.x, old_pos.y)
 		if data.dragged then return end
+		
+		-- EXECUTE COMMAND IF APPLICABLE
 		if t:hover(data.x, data.y) then
 			local i, m = ui.meta:find(function(m) return m.t == t end)
 			if m and m.command then
 				windower.send_command(m.command)
 			end
 		end
+	
+	-- LEFT CLICK
 	else
+		-- DARKEN OBJECT & MOVE DOWN/RIGHT 1PX
 		old_color = {t:color()}
 		t:color(old_color[1]-30,old_color[2]-30,old_color[3]-30)
+		old_pos.x, old_pos.y = t:pos()
+		t:pos(old_pos.x +1, old_pos.y+1)
 	end
 end
 
