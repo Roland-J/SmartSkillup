@@ -718,8 +718,8 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 			end
 		end
 
-	-- Mouse left/right click (added right click support and self-events)
-	elseif type == 1 or type == 4 then
+	-- Mouse left/right/scroll click (added right/scroll click support and self-events)
+	elseif type == 1 or type == 4 or type == 7 then
 		if click or drag then return true end --ignore embedded clicks (ex: ldown > *rdown* > rup > lup)
 		local mode = ({[1]='left', [4]='right', [7]='scroll'})[type]
 		for _, t in ipairs(windower.text.saved_texts) do
@@ -736,8 +736,8 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 		end
 		return click or drag and true
 
-	-- Mouse left/right release (added right-release support, self-events, and z-index support)
-	elseif type == 2 or type == 5 then
+	-- Mouse left/right/scroll release (added right/scroll-release support and self-events)
+	elseif type == 2 or type == 5 or type == 8 then
 		local mode = ({[2]='left', [5]='right', [8]='scroll'})[type]
 		if (click and click.mode ~= mode) or (drag and drag.mode ~= mode) then return true end  --ignore embedded releases
 		if click or drag then
