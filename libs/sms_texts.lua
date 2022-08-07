@@ -750,6 +750,9 @@ windower.register_event('mouse', function(type, x, y, delta, blocked)
 				end
 				call_events(drag.t, mode .. '_drag', {release = true})
 			end
+			if hover and meta[hover.t] and hover.t:hover(x, y) then
+				call_events(hover.t, 'hover', true) -- re-initialize hover, it won't do this itself
+			end
 			click = nil
 			drag = nil
 			return true
