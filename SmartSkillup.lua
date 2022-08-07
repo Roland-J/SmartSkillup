@@ -280,13 +280,7 @@ function use_module()
 			windower.send_command('input ' .. modules.georef.res.prefix .. ' "' .. modules.georef.res.en .. '" <me>')
 			modules.georef.buffactive = true -- speed up this flag
 			modules.georef.warned = nil
-		-- LUOPAN TOO FAR TO RELEASE
-		elseif math.sqrt(pet.distance) >= 20 then
-			if modules.georef.warned then return false end
-			local distance = math.sqrt(pet.distance) > 50 and '50+' or string.format("%.1f", math.sqrt(pet.distance))
-			logger(chat_colors.yellow, '[GEO-REFRESH MODULE] Luopan is too far away to release. (' .. distance .. ' yalms. Limit: 20)')
-			me.modules.georef.warned = true
-		-- LUOPAN CAN BE RELEASED
+		-- RELEASE LUOPAN
 		else
 			windower.send_command('input /ja "Full Circle" <me>')
 		end
