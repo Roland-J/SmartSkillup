@@ -713,6 +713,7 @@ local old_hover_color
 function ui.hover_event(t, root_settings, hovered, active_click)
 	local i, m = ui.meta:find(function(m) return m.t == t end)
 	if not m or not m.command then return end -- ignore destroyed or non-interactable elements
+	if active_click then return end -- ignore embedded hovers (click > *hover elsewhere* > release)
 	
 	-- HOVER
 	if hovered then
