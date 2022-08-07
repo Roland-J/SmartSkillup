@@ -282,6 +282,8 @@ function use_module()
 			modules.georef.warned = nil
 		-- RELEASE LUOPAN
 		else
+			local distance = math.sqrt(pet.distance) > 50 and '50+' or string.format("%.1f", math.sqrt(pet.distance))
+			logger(chat_colors.yellow, '[GEO-REFRESH MODULE] Luopan is out of range, releasing to recast... (' .. distance .. ' yalms)')
 			windower.send_command('input /ja "Full Circle" <me>')
 		end
 		return true
