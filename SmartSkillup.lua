@@ -75,7 +75,7 @@ main_skills = T{} -- the player's current list of skill statuses. structure: {['
 -------------------------------------------------------------------------------------------------------------------
 active = false -- the main on/off switch for skilling up
 paused = false -- toggles true when over the limit for decision.issues or out of mp and idle. (Over-Limit Triggers: invalid targets, or continuous movement)
-loop = T{issues=0, issues_max=6} -- misc flags about the loop
+loop = T{issues=0} -- misc flags about the loop
 going = false -- flags if the loop is going, used to prevent duplicate loops
 auto_shutdown = false -- tracks if the auto shutdown feature is engaged
 skill_data_retrieved = false -- tracks if skill data has been fetched from the server for the current session
@@ -511,7 +511,7 @@ function decide_to_rest(source, give_countdown, override)
 		end
 	end
 	-- RETURN: MP NOT NEEDED
-	if not decision.out_of_mp and me.mpp > 30 and loop.issues < loop.issues_max then
+	if not decision.out_of_mp and me.mpp > 30 then
 		return logger(chat_colors.purple, '[PROCESS RESTING] CANCEL: MP Needed flag is false and player MPP above 30.', true)
 	-- RETURN: ALREADY RESTING
 	elseif me.status == 'Resting' or event_pauses.Resting then
