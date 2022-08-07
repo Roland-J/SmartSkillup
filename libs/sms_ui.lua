@@ -1,3 +1,5 @@
+--[[ CREDIT: This document is originally authored by Windower & included in Windower v4.
+	It's current form has only been modified, not authored, by RolandJ. ]]
 --[[Copyright © 2022, RolandJ
 All rights reserved.
 
@@ -77,7 +79,7 @@ local scalars = T{
 		subtexts  = {x = 167 * ui_scalar, y =   0},
 		header    = {x =   2 * ui_scalar, y = -13 * ui_scalar},
 		on        = {x =  87 * ui_scalar, y = -11 * ui_scalar},
-		slash     = {x = 101 * ui_scalar, y = -11 * ui_scalar},
+		slash     = {x = 102 * ui_scalar, y = -11 * ui_scalar},
 		off       = {x = 106 * ui_scalar, y = -11 * ui_scalar},
 		pause     = {x = 131 * ui_scalar, y = -11 * ui_scalar},
 		paused    = {x = 129 * ui_scalar, y = -11 * ui_scalar},

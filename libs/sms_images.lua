@@ -1,3 +1,5 @@
+--[[ CREDIT: This document is originally authored by Windower & included in Windower v4.
+	It's current form has only been modified, not authored, by RolandJ. ]]
 --[[Copyright © 2022, RolandJ
 All rights reserved.
 
