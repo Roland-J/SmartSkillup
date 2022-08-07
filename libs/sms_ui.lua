@@ -166,17 +166,17 @@ end
 -------------------------------------------------------------------------------------------------------------------
 function ui.active(bool)
 	if bool == nil then return end
-	
 	local _, on = ui.meta:find(function(m) return m.name == 'on' end)
 	local _, off = ui.meta:find(function(m) return m.name == 'off' end)
 	local _, paused = ui.meta:find(function(m) return m.name == 'paused' end)
-	on.t:color(colors[bool and 'white' or 'grey']())
+	
 	on.active = bool
-	off.t:color(colors[bool and 'grey' or 'white']())
+	ui.update_color(on, colors[bool and 'white' or 'grey']())
 	off.active = not bool
+	ui.update_color(off, colors[bool and 'grey' or 'white']())
 	if not bool and paused.active then --unpause on deactivation
-		paused.t:color(colors.grey())
 		paused.active = false
+		ui.update_color(paused, colors.grey())
 	end
 end
 
@@ -192,7 +192,7 @@ function ui.paused(norm, event, issue)
 	
 	paused.active = norm == nil and paused.active or norm
 	paused.event = event == nil and paused.event or event
-	paused.t:color(colors[paused.active and 'white' or (paused.event and 'orange' or 'grey')]())
+	ui.update_color(paused, colors[paused.active and 'white' or (paused.event and 'orange' or 'grey')]())
 end
 
 function ui.event_paused(bool)
@@ -211,7 +211,7 @@ function ui.auto_shutdown(bool)
 	if shutdown == nil or shutdown.t == nil then return end
 
 	shutdown.active = bool
-	shutdown.t:color(colors[bool and 'orange' or 'grey']());
+	ui.update_color(shutdown, colors[bool and 'orange' or 'grey']())
 end
 
 
@@ -266,12 +266,30 @@ end
 
 function ui.set_text_color(name, color)
 	if name == nil or color == nil then return end
-	local _, m_t = ui.meta:find(function(m) return m.name == name and m.kind == 'text' end)
-	local _, m_st = ui.meta:find(function(m) return m.name == name and m.kind == 'subtext' end)
-	if m_t == nil or m_st == nil then return print('unable to get text ' .. name) end
+	local text, stext = ui.get_subordinate_texts(name)
+	if text == nil or stext == nil then return print('unable to get text ' .. name) end
 	
-	m_t.t:color(colors[color]())
-	m_st.t:color(colors[color]())
+	ui.update_color(text,  colors[color]())
+	ui.update_color(stext, colors[color]())
+end
+
+function ui.get_subordinate_texts(name)
+	if name == nil then return end
+	local _, m1 = ui.meta:find(function(m) return m.name == name and m.kind == 'text' end)
+	local _, m2 = ui.meta:find(function(m) return m.name == name and m.kind == 'subtext' end)
+	return m1, m2
+end
+
+
+
+-------------------------------------------------------------------------------------------------------------------
+-- A function that keeps element colors synced with their meta colors
+-------------------------------------------------------------------------------------------------------------------
+function ui.update_color(meta, c1, c2, c3)
+	if meta == nil then return end
+	
+	meta.t:color(c1, c2, c3)
+	meta.color = {c1, c2, c3}
 end
 
 
@@ -324,6 +342,7 @@ function ui.store_table(t, name, kind, command)
 			t = t,
 			pos = {x = x, y = y},
 			hidden = name:startswith('limit') and true or nil,
+			color = {t:color()},
 		}
 	end
 	
@@ -333,7 +352,10 @@ function ui.store_table(t, name, kind, command)
 		t:register_event('left_click', ui.left_click_event)
 		t:register_event('hover', ui.hover_event)
 	elseif S{'hitbox','misc'}[kind] then
-		if kind == 'misc' then t:register_event('left_click', ui.left_click_event) end
+		if kind == 'misc' then
+			t:register_event('left_click', ui.left_click_event)
+			t:register_event('hover', ui.hover_event)
+		end
 		t:right_draggable(true)
 		t:register_event('right_drag', ui.move_event)
 		t:register_event('scroll_up',   function() windower.send_command('sms uizoom in')  end)
@@ -649,32 +671,34 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- The function that handles mouse left-click events
 -------------------------------------------------------------------------------------------------------------------
-local old_color
-local old_pos = {}
 function ui.left_click_event(t, root_settings, data)
 	-- IGNORE NO-COMMAND CLICKS
 	local i, m = ui.meta:find(function(m) return m.t == t end)
-	if not (m or {}).command then return end
+	if not m or not m.command then return end -- ignore destroyed or non-interactable elements
+	local text, stext = ui.get_subordinate_texts(m.name)
 	
-	-- LEFT RELEASE
+	-- LEFT RELEASE: FIRE COMMAND & RESTORE POS
 	if data.release then
-		-- RESTORE TINT & POS
-		t:color(old_color[1],old_color[2],old_color[3])
-		t:pos(old_pos.x, old_pos.y)
-		if data.dragged then return end
-		
-		-- EXECUTE COMMAND IF APPLICABLE
-		if t:hover(data.x, data.y) then
+		if t:hover(data.x, data.y) and not data.dragged then -- cancel command on drag-away
 			windower.send_command(m.command)
 		end
+		t:pos(m.pos.x, m.pos.y)
+		if m.kind == 'image' then
+			if text  then text.t:pos (text.pos.x , text.pos.y ) end
+			if stext then stext.t:pos(stext.pos.x, stext.pos.y) end
+		end
+		
+		-- UNHOVER HELPER: RESTORE COLOR FOR HOVER>DRAGAWAYS
+		t:color(m.color[1], m.color[2], m.color[3])
 	
-	-- LEFT CLICK
+	-- LEFT CLICK : MOVE DOWN/RIGHT 1PX
 	else
-		-- DARKEN OBJECT & MOVE DOWN/RIGHT 1PX
-		old_color = {t:color()}
-		t:color(old_color[1]-30,old_color[2]-30,old_color[3]-30)
-		old_pos.x, old_pos.y = t:pos()
-		t:pos(old_pos.x +1, old_pos.y+1)
+		local offset = 1 * settings.user_ui_scalar
+		t:pos(m.pos.x + offset, m.pos.y + offset)
+		if m.kind == 'image' then
+			if text then  text.t:pos (text.pos.x + offset , text.pos.y + offset ) end
+			if stext then stext.t:pos(stext.pos.x + offset, stext.pos.y + offset) end
+		end
 	end
 end
 
@@ -683,15 +707,19 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- The function that handles mouse hover events
 -------------------------------------------------------------------------------------------------------------------
+local old_hover_color
 function ui.hover_event(t, root_settings, hovered, active_click)
-	-- UNHOVERED WITH CLICK STILL DOWN
-	if active_click then
-		old_color = {255,255,255}
+	local i, m = ui.meta:find(function(m) return m.t == t end)
+	if not m or not m.command then return end -- ignore destroyed or non-interactable elements
 	
-	-- HOVER/UNHOVER WITHOUT CLICK DOWN
+	-- HOVER
+	if hovered then
+		t:color(m.color[1]-30, m.color[2]-30, m.color[3]-30)
+	
+	-- UNHOVER
 	else
-		local c = hovered and 220 or 255
-		t:color(c, c, c)
+		if active_click then return end -- ignore, will be restored during click release
+		t:color(m.color[1], m.color[2], m.color[3])
 	end
 end
 
