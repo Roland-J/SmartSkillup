@@ -169,7 +169,8 @@ local function is_valid(spell, skill_en, for_module) --half of this function cam
 		spell.reason = 'Resistable/unstackable, poor for skillup'
 		ignored_spells[skill_en]:insert(spell)
 		return false
-	elseif not for_module and spell.en:wmatch('Teleport-*|Raise*|Warp*|Tractor*|Retrace|Escape|Geo-*|Sacrifice|Odin|Alexander|Recall-*|Full Cure') then --not for skillup
+	elseif not for_module and (spell.en:wmatch('Teleport-*|Raise*|Warp*|Tractor*|Retrace|Escape|Geo-*|Sacrifice|Odin|Alexander|Recall-*|Full Cure')
+	or (skill_en == 'Healing Magic' and spell.en:endswith('na'))) then --not for skillup
 		spell.reason = 'Not for skillup'
 		ignored_spells[skill_en]:insert(spell)
 		return false
