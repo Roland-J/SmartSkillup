@@ -178,7 +178,7 @@ function images.new(str, settings, root_settings)
 	t = {}
 	local m = {}
 	meta[t] = m
-	m.name = (_addon and _addon.name or 'image') .. '_gensym_' .. tostring(t):sub(8) .. '_%.8x':format(16^8 * math.random()):sub(3)
+	m.name = (_addon and _addon.name or 'image') .. '_gensym_' .. tostring(t):sub(8) .. ('_%.8x'):format(16^8 * math.random()):sub(3)
 	m.settings = settings or {}
 	m.status = m.status or {visible = false, image = {}}
 	m.root_settings = root_settings
@@ -546,7 +546,7 @@ end)
 -- Can define functions to execute every time the settings are reloaded
 function images.register_event(t, key, fn)
 	if not events[key] then
-		error('Event %s not available for text objects.':format(key))
+		error(('Event %s not available for text objects.'):format(key))
 		return
 	end
 

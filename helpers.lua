@@ -300,7 +300,7 @@ end
 -- Requests skill data from the server, with a timeout, with a cutscene failsafe
 -- NOTE: During events the server queues your packet replies, so a spam of requests would get a spam of replies
 -------------------------------------------------------------------------------------------------------------------
-function skill_data_request_timeout(attempts)
+function SkillDataRequestTimeout(attempts)
 	attempts = attempts or 0
 	local freq = 10 --seconds
 	local attempts_max = (60/freq)*1 --1 minute
@@ -316,9 +316,9 @@ function skill_data_request_timeout(attempts)
 		end
 		
 		attempts = attempts + 1
-		windower.packets.inject_outgoing(0x061, 0:char():rep(8)) -- requests skill packet, packet processor runs initialize_ui() if skill_data_retrieved is false
+		windower.packets.inject_outgoing(0x061, string.char(0):rep(8)) -- requests skill packet
 		coroutine.close(threads.skill_data_request_timeout)
-		threads.skill_data_request_timeout = skill_data_request_timeout:schedule(freq, attempts)
+		threads.skill_data_request_timeout = coroutine.schedule(function() SkillDataRequestTimeout(attempts) end, freq)
 		logger(chat_colors.purple, '[SKILL REQUEST] Requesting skill data from server; attempt ' .. attempts .. '/' .. attempts_max, true)
 	
 	-- NOTIFY: OUT OF ATTEMPTS
@@ -327,6 +327,8 @@ function skill_data_request_timeout(attempts)
 		logger(chat_colors.red, '[NOTE] Cutscenes queue packets and is the most likely cause; initialization should finish after cutscene.')
 	end
 end
+
+_G.skill_data_request_timeout = SkillDataRequestTimeout  -- Make it globally accessible if needed
 
 
 
@@ -599,24 +601,31 @@ function determine_modules()
 	end
 	-- DYNAMIC SPELL MODULES (Refresh/Haste)
 	for id, spell in pairs(res.spells) do
-		local skill_en = res.skills[spell.skill].en
+		local skill_en = res.skills[spell.skill].en;
 		if is_valid(spell, skill_en, true) then
 			-- REFRESH MODULE, weighted by priority
 			if spell.en == 'Refresh III' then
-				modules.refresh:update({available = true, res = {res.spells:find(function(r) return r.en == 'Refresh III' end)}[2]})
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Refresh III' end))};
+				modules.refresh:update(update_data);
 			elseif spell.en == 'Refresh II' and modules.refresh.en ~= 'Refresh III' then
-				modules.refresh:update({available = true, res = {res.spells:find(function(r) return r.en == 'Refresh II' end)}[2]})
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Refresh II' end))};
+				modules.refresh:update(update_data);
 			elseif spell.en == 'Refresh' and not modules.refresh.available then
-				modules.refresh:update({available = true, res = {res.spells:find(function(r) return r.en == 'Refresh' end)}[2]})
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Refresh' end))};
+				modules.refresh:update(update_data);
 			elseif spell.en == 'Battery Charge' then
-				modules.refresh:update({available = true, res = {res.spells:find(function(r) return r.en == 'Battery Charge' end)}[2]})
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Battery Charge' end))};
+				modules.refresh:update(update_data);
 			-- HASTE MODULE, weighted by priority
-			elseif spell.en == 'Erratic Fluttter' then
-				modules.haste:update  ({available = true, res = {res.spells:find(function(r) return r.en == 'Erratic Flutter' end)}[2]})
+			elseif spell.en == 'Erratic Flutter' then
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Erratic Flutter' end))};
+				modules.haste:update(update_data);
 			elseif spell.en == 'Haste II' then
-				modules.haste:update({available = true, res = {res.spells:find(function(r) return r.en == 'Haste II' end)}[2]})
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Haste II' end))};
+				modules.haste:update(update_data);
 			elseif spell.en == 'Haste' and not modules.haste.available then
-				modules.haste:update({available = true, res = {res.spells:find(function(r) return r.en == 'Haste' end)}[2]})
+				local update_data = {available = true, res = select(2, res.spells:find(function(r) return r.en == 'Haste' end))};
+				modules.haste:update(update_data);
 			end
 		end
 	end
@@ -688,7 +697,7 @@ function update_best_cures()
 	known_spells = windower.ffxi.get_spells()
 	me.best_cures = T{}
 	for i = 6, 1, -1 do
-		local cure = {res.spells:find(function(r) return r.en == 'Cure' .. numerals[i] end)}[2]
+		local cure = select(2, res.spells:find(function(r) return r.en == 'Cure' .. numerals[i] end))
 		if is_valid(cure, res.skills[cure.skill].en, true) then
 			-- BEST CURE
 			if me.best_cures[1] == nil then

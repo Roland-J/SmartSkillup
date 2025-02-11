@@ -228,7 +228,7 @@ function texts.new(str, settings, root_settings)
 	local t = {}
 	local m = {}
 	meta[t] = m
-	m.name = (_addon and _addon.name or 'text') .. '_gensym_' .. tostring(t):sub(8) .. '_%.8X':format(16^8 * math.random()):sub(3)
+	m.name = (_addon and _addon.name or 'text') .. '_gensym_' .. tostring(t):sub(8) .. ('_%.8X'):format(16^8 * math.random()):sub(3)
 	t._name = m.name
 	m.settings = settings or {}
 	m.status = m.status or {visible = false, text = {}}
@@ -317,7 +317,7 @@ function texts.append(t, str)
 	local index = #m.textorder + 1
 	while i <= #str do
 		local startpos, endpos = str:find('%${.-}', i)
-		local rndname = '%s_%u':format(m.name, index)
+		local rndname = ('%s_%u'):format(m.name, index)
 		if startpos then
 			-- Match before the tag
 			local match = str:sub(i, startpos - 1)
@@ -775,7 +775,7 @@ end)
 -- Can define functions to execute every time the settings are reloaded
 function texts.register_event(t, key, fn)
 	if not events[key] then
-		error('Event %s not available for text objects.':format(key))
+		error(('Event %s not available for text objects.'):format(key))
 		return
 	end
 
